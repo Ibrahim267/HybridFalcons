@@ -1,0 +1,88 @@
+============================================================
+ CrunchGuard PLUGIN v2.0.0 — HOW TO TEST (5 minutes)
+ Built successfully: 48,947 bytes, 6 classes + full dashboard
+============================================================
+
+THE ZIP IS ALREADY ON YOUR DESKTOP:
+  crunchguard-plugin-2.0.0.zip
+
+STEP 1 — INSTALL INTO ANDROID STUDIO
+------------------------------------
+1. Open Android Studio
+2. File -> Settings -> Plugins
+   (on Mac: Android Studio -> Settings -> Plugins)
+3. Click the gear icon (top right of the Plugins panel)
+4. "Install Plugin from Disk..."
+5. Pick the Desktop zip -> OK
+6. Restart Android Studio when prompted
+
+(WORKS IN ANY JETBRAINS IDE TOO: IntelliJ IDEA, PyCharm, WebStorm...
+ platform 2024.2-2025.2. Android Studio is fine since it IS the
+ IntelliJ platform - your build AI-243 is supported.)
+
+STEP 2 — OPEN A PROJECT
+-----------------------
+Open any project (or New Project -> Empty Activity, whatever is fast).
+On startup the plugin:
+  - starts the embedded relay on http://localhost:8790
+  - registers the REAL editor keystroke counter
+
+STEP 3 — FIND THE TOOL WINDOW
+-----------------------------
+Look at the RIGHT edge of the IDE -> vertical tab "CrunchGuard".
+Click it -> the dashboard loads INSIDE the IDE (JCEF browser).
+You should see a small badge bottom-right of the dashboard:
+  "IDE plugin mode - real editor keystrokes feed the crunch meter"
+
+STEP 4 — VERIFY REAL IDE KEYSTROKES
+-----------------------------------
+1. In the dashboard, start a session (or just watch the crunch meter)
+2. Type anything in a code editor
+3. The crunch meter moves WITHOUT touching the IDE-window with the
+   mouse - the keystrokes come from the editor itself, via the
+   plugin's /api/ide-activity endpoint. This is THE difference
+   vs the browser-only version.
+
+STEP 5 — FULL WALK CYCLE (the demo)
+-----------------------------------
+1. Trigger a break (or let crunch time hit)
+   -> tool window auto-focuses + balloon "Crunch break triggered"
+   -> QR code appears in the tool window
+2. Scan the QR with your Android phone (same Wi-Fi)
+   -> phone opens http://<LAN-IP>:8790/walk?s=<id>
+   -> walk -> steps count -> progress syncs LIVE in the IDE
+3. Target reached
+   -> IDE balloon: "Crunch Break Verified! +100 Mana"
+
+NO PHONE AT HAND? Use Demo Mode in the dashboard header (same as
+the standalone version) - it simulates the walk.
+
+IF THE PHONE CANNOT CONNECT
+---------------------------
+One time only, as admin:
+  plugin\firewall_fix_plugin.bat
+It opens TCP 8790-8795. (Windows usually asks on first connect too.)
+
+KNOWN LIMITS
+------------
+- iOS/Safari needs HTTPS for motion sensors -> plugin relay is HTTP,
+  so real steps on iPHONES require the without-plugin variant
+  (HTTPS 8788). Android Chrome: works over HTTP. Demo Mode works
+  everywhere.
+- The relay log is inside the IDE: Help -> Show Log / or look for
+  "[CrunchGuard]" lines in idea.log.
+
+WHAT GOT BUILT (sanity)
+-----------------------
+  crunchguard-plugin/lib/crunchguard-plugin-2.0.0.jar
+    META-INF/plugin.xml
+    com/crunchguard/plugin/*.class   (relay, listener, startup,
+                                      tool window, notifier)
+    web/  index.html walk.html qrcode.min.js icon.svg manifest.json
+
+REBUILD ANY TIME
+----------------
+  Double-click  plugin\_build_plugin.bat
+  (uses Android Studio's JBR as JDK21 + Gradle 8.12, no downloads;
+   log: plugin\build_log.txt, result lands on build\distributions)
+============================================================

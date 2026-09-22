@@ -3,10 +3,18 @@
 //  "Help the Developer" — 42AD x JetBrains hackathon
 //  Build:  gradle buildPlugin   -> build/distributions/CrunchGuard-<v>.zip
 //  Run:    gradle runIde        -> sandbox IDE with the plugin loaded
+//
+//  Uses the IntelliJ Platform Gradle Plugin 2.x (required for 2024.2+).
+//
+//  LOCAL-BUILD MODE (offline-friendly, no ~1 GB IDE download):
+//  the platform dependency points at the installed Android Studio
+//  (IntelliJ Platform build AI-243), which is also the IDE the plugin
+//  gets tested in. For a "clean" IC-2024.2.4 build, swap the local(...)
+//  line for:  intellijIdeaCommunity("2024.2.4")
 // ============================================================
 plugins {
     id("java")
-    id("org.jetbrains.intellij") version "1.17.4"
+    id("org.jetbrains.intellij.platform") version "2.2.1"
 }
 
 group = "com.crunchguard"
@@ -14,27 +22,42 @@ version = "2.0.0"
 
 repositories {
     mavenCentral()
+    intellijPlatform {
+        defaultRepositories()
+    }
 }
 
 java {
     toolchain {
-        // auto-downloaded if missing (foojay resolver in settings.gradle.kts)
-        languageVersion.set(JavaLanguageVersion.of(17))
+        // Compiles with the locally available JDK 21 (Android Studio's JBR,
+        // pinned via org.gradle.java.home in gradle.properties) and emits
+        // Java 17 bytecode — the baseline for the 2024.2+ platform.
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
-intellij {
-    version.set("2024.2.4")   // target platform: IntelliJ IDEA Community 2024.2
-    type.set("IC")            // works in IC / IU / PyCharm / WebStorm (JCEF + platform only)
-    updateSinceUntilBuild.set(false)
+dependencies {
+    intellijPlatform {
+        // Android Studio (IntelliJ Platform 2024.3, AI-243.x) as local SDK.
+        local("C:/Program Files/Android/Android Studio")
+        // intellijIdeaCommunity("2024.2.4")   // <- upstream CI variant
+    }
+}
+
+intellijPlatform {
+    pluginConfiguration {
+        ideaVersion {
+            sinceBuild.set("242")
+            untilBuild.set("252.*")
+        }
+    }
+    // No forms/ searchable options to build — skip the headless IDE run.
+    buildSearchableOptions = false
 }
 
 tasks {
     withType<JavaCompile> {
         options.encoding = "UTF-8"
-    }
-    // searchable options are useless for this plugin and slow the build a lot
-    buildSearchableOptions {
-        enabled = false
+        options.release.set(17)
     }
 }

@@ -6,15 +6,16 @@ import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.jcef.JBCefApp;
 import com.intellij.ui.jcef.JBCefBrowser;
-import com.intellij.util.BrowserUtil;
 import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import java.awt.Desktop;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
+import java.net.URI;
 
 /**
  * The CrunchGuard dashboard, embedded in the IDE as a JCEF tool window
@@ -46,11 +47,6 @@ public final class CrunchGuardToolWindowFactory implements ToolWindowFactory {
         }
     }
 
-    @Override
-    public boolean isApplicableAsync() {
-        return true;
-    }
-
     private static JComponent fallbackPanel(String url) {
         JBPanel<JBPanel<?>> panel = new JBPanel<>(new GridBagLayout());
         JLabel label = new JLabel("<html><body style='width:280px'>"
@@ -59,7 +55,12 @@ public final class CrunchGuardToolWindowFactory implements ToolWindowFactory {
                 + "The CrunchGuard relay is still running inside the IDE —"
                 + " open the dashboard in your default browser:</body></html>");
         JButton open = new JButton("Open Dashboard  (" + url + ")");
-        open.addActionListener(e -> BrowserUtil.browse(url));
+        open.addActionListener(e -> {
+            try {
+                Desktop.getDesktop().browse(new URI(url));
+            } catch (Exception ignored) {
+            }
+        });
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
         c.gridy = 0;

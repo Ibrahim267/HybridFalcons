@@ -46,6 +46,21 @@ cd plugin
 gradle buildPlugin        # or: gradle runIde   (Gradle 8.x, JDK auto-provisioned)
 ```
 
+### Option C — offline one-click build (works with ZERO extra installs)
+
+`_build_plugin.bat` builds the plugin **without downloading the ~1 GB
+IntelliJ SDK**: it uses the locally installed Android Studio (an IntelliJ
+Platform 2024.3 IDE) as the compile target and its bundled JBR (full JDK 21)
+as the build JVM, with the Gradle 8.12 distribution already cached in
+`~\.gradle`. Double-click it, then watch `build_log.txt`.
+
+```bat
+plugin\_build_plugin.bat          # -> plugin\build\distributions\crunchguard-plugin-2.0.0.zip
+```
+
+The zip name follows `rootProject.name` (`crunchguard-plugin-2.0.0.zip`),
+not the plugin id — both install fine.
+
 ## Install into your real IDE
 
 1. `Settings/Preferences → Plugins → ⚙ (gear icon) → Install Plugin from Disk…`
