@@ -1,0 +1,13 @@
+{
+  "name": "crunchguard",
+  "version": "1.2.1",
+  "description": "Walk N real steps to unlock your IDE - enforced physical breaks for developers. Zero npm dependencies, fully offline.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test_e2e.js"
+  },
+  "keywords": ["health", "breaks", "walk", "gamejam", "hackathon", "devtools"],
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}

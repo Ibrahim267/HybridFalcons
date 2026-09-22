@@ -1,0 +1,59 @@
+==========================================================
+ CRUNCHGUARD - 2-MINUTE TEST GUIDE (read this, friend)
+==========================================================
+
+WHAT YOU NEED
+  * Windows PC with Node.js 18+  (https://nodejs.org - grab the LTS)
+  * A phone on the SAME Wi-Fi as that PC
+
+START (3 steps)
+  1. Unzip this folder anywhere (Desktop is fine).
+  2. Double-click  start_server.bat
+       - If Windows Firewall asks about Node.js -> click "Allow access"
+       - If the phone still cannot connect later: right-click
+         firewall_fix.bat  ->  Run as administrator  (one time)
+  3. The dashboard opens automatically at  http://localhost:8787
+
+TRY IT
+  4. Press  "Trigger Break Now"  ->  a QR code appears.
+  5. Scan the QR with your phone camera.
+       - Android: opens over http - motion sensor works right away.
+       - iPhone: opens over https - accept the certificate warning
+         (it is a self-signed LOCAL certificate, this is normal and
+         safe - nothing leaves your machine), then tap
+         "Enable Motion Sensor" and Allow.
+  6. Walk. Or jog in place. Or shake gently (pocket works too).
+     Steps climb LIVE on both screens. Hit the target ->
+       desktop : "CRUNCH BREAK VERIFIED!  +100 Mana" + confetti
+       phone   : "WALK COMPLETE!"
+
+MAC or LINUX instead of Windows?
+  1. Install Node.js LTS  (https://nodejs.org, or:  brew install node)
+  2. Open Terminal, cd into the unzipped folder
+     (tip: type "cd " then drag the folder into the Terminal window),
+     then run:   bash start_server.sh
+  3. If macOS asks "accept incoming network connections?" -> Allow
+  4. Dashboard opens at http://localhost:8787 - continue from step 4 above.
+  Everything else (QR, LAN IP auto-detect, phone walking) is identical.
+
+NO PHONE AROUND?
+  * Flip  DEMO MODE: INSTANT WALK  (top-right of the dashboard),
+    then Trigger Break - a simulated walker finishes the job.
+  * Or press "Instant Walk (demo)" inside the break window.
+
+DESKTOP KEYS
+  Space = start/pause timer     Esc = cancel a break
+
+TROUBLESHOOTING
+  * Phone page will not load      -> same Wi-Fi? run firewall_fix.bat (admin)
+  * "Port already in use"         -> run restart_server.bat
+  * Steps stay at 0               -> tap "Enable Motion Sensor" first,
+                                     watch the sensor debug readout
+                                     under the ring (events + m/s^2)
+  * iPhone: sensor blocked        -> use the https:// link (QR already
+                                     points there) + accept the warning
+  * Everything is 100% local/offline - no data leaves the PC.
+
+DASHBOARD  http://localhost:8787        (HTTP, everyone)
+SECURE     https://<PC-IP>:8788/walk    (HTTPS, iOS motion sensors)
+==========================================================
