@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
  */
 public final class CrunchGuardServer {
 
-    public static final String VERSION = "2.0.0-plugin";
+    public static final String VERSION = "2.2.0-plugin";
     static final long SESSION_TTL_MS = 2L * 60 * 60 * 1000; // 2h, same as server.js
     static final int MAX_SESSIONS = 500;
     static final int PORT_BASE = 8790;
@@ -109,6 +109,7 @@ public final class CrunchGuardServer {
                 System.out.println("[CrunchGuard] relay on http://localhost:" + port
                         + "  (phone / LAN: http://" + lanIP() + ":" + port + ")");
                 startSweeper();
+                CrunchGuardEngine.start();
                 return;
             } catch (IOException e) {
                 lastError = e;
@@ -169,9 +170,13 @@ public final class CrunchGuardServer {
             }
             if ("/api/ide-activity".equals(path)) {
                 long ago = EditorActivityListener.lastActivityAgoSec();
+                String fid = CrunchGuardEngine.forcedSessionId();
                 sendJSON(ex, 200, "{\"keystrokes\":" + EditorActivityListener.keystrokes()
                         + ",\"lastActivityAgoSec\":" + ago
-                        + ",\"active\":" + (ago >= 0 && ago < 3) + "}");
+                        + ",\"active\":" + (ago >= 0 && ago < 3)
+                        + ",\"crunch\":" + String.format(java.util.Locale.ROOT, "%.1f", CrunchGuardEngine.crunch())
+                        + ",\"forcedSession\":" + (fid != null ? esc(fid) : "null")
+                        + "}");
                 return;
             }
             if ("/api/session".equals(path) && "POST".equals(method)) {
@@ -180,6 +185,12 @@ public final class CrunchGuardServer {
                 Matcher m = P_TARGET.matcher(body);
                 if (m.find()) {
                     target = clamp(parse(m.group(1), 200), 10, 5000);
+                }
+                Session dup = openSession(10 * 60 * 1000L);
+                if (dup != null) {
+                    // a break is already running (engine-forced or another tab) — adopt it
+                    sendJSON(ex, 200, publicState(dup));
+                    return;
                 }
                 Session s = createSession(target);
                 System.out.println("[CrunchGuard] session " + s.id + " created target=" + s.target);
@@ -261,6 +272,41 @@ public final class CrunchGuardServer {
     private static Session getSession(String id) {
         synchronized (SESSIONS_LOCK) {
             return SESSIONS.get(id);
+        }
+    }
+
+    /** Package-private: engine looks up the session it forced. */
+    static Session sessionById(String id) {
+        synchronized (SESSIONS_LOCK) {
+            return SESSIONS.get(id);
+        }
+    }
+
+    /** Newest not-done session younger than {@code withinMs}, or null. */
+    static Session openSession(long withinMs) {
+        long now = System.currentTimeMillis();
+        synchronized (SESSIONS_LOCK) {
+            for (Session s : SESSIONS.values()) {
+                if (s.steps < s.target && now - s.createdAt < withinMs) {
+                    return s;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Engine-forced session; null if an open session already exists (dedupe). */
+    static String createForcedSession(int target) {
+        synchronized (SESSIONS_LOCK) {
+            long now = System.currentTimeMillis();
+            for (Session s : SESSIONS.values()) {
+                if (s.steps < s.target && now - s.createdAt < 10 * 60 * 1000L) {
+                    return null;
+                }
+            }
+            Session s = createSession(target);
+            System.out.println("[CrunchGuard] forced session " + s.id + " created target=" + s.target);
+            return s.id;
         }
     }
 
@@ -594,13 +640,22 @@ public final class CrunchGuardServer {
                   .then(function (j) {
                     if (last !== null && j.keystrokes > last) poke(j.keystrokes - last);
                     last = j.keystrokes;
+                    if (j.forcedSession && location.search.indexOf('s=' + j.forcedSession) === -1) {
+                      location.href = '/?s=' + j.forcedSession;
+                      return;
+                    }
+                    var b = document.getElementById('__cg_badge');
+                    if (b && typeof j.crunch === 'number') {
+                      b.textContent = 'IDE plugin mode — crunch ' + Math.round(j.crunch) + '%';
+                    }
                   })
                   .catch(function () {});
               }
               setInterval(poll, 1000);
               document.addEventListener('DOMContentLoaded', function () {
                 var b = document.createElement('div');
-                b.textContent = 'IDE plugin mode — real editor keystrokes feed the crunch meter';
+                b.id = '__cg_badge';
+                b.textContent = 'IDE plugin mode — crunch 0%';
                 b.style.cssText = 'position:fixed;bottom:6px;right:8px;z-index:9999;font:10px monospace;color:#22d3ee;background:#0b0f14;border:1px solid #1e2630;border-radius:99px;padding:3px 10px;opacity:.85;pointer-events:none';
                 document.body.appendChild(b);
               });

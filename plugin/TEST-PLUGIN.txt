@@ -1,10 +1,22 @@
 ============================================================
- CrunchGuard PLUGIN v2.0.0 — HOW TO TEST (5 minutes)
- Built successfully: 48,947 bytes, 6 classes + full dashboard
+ CrunchGuard PLUGIN v2.2.0 — HOW TO TEST (5 minutes)
+ Forced-break engine + fully editable settings inside the IDE
 ============================================================
 
 THE ZIP IS ALREADY ON YOUR DESKTOP:
-  crunchguard-plugin-2.0.0.zip
+  crunchguard-plugin-2.2.0.zip
+
+WHAT'S NEW IN v2.2.0
+--------------------
+- FORCED BREAKS ARE FULLY AUTOMATIC: type continuously and the IDE
+  itself pops a balloon + opens the QR screen in your browser.
+  You never have to open anything manually.
+- Settings | Tools | CrunchGuard: change the seconds of sustained
+  typing that trigger a break AND the steps target. Both are plain
+  editable numbers - type whatever you want, press Apply, it takes
+  effect on the next tick (no restart).
+- One checkbox to stop/start the engine without uninstalling.
+- Tool window button "Force break now" opens a break instantly.
 
 STEP 1 — INSTALL INTO ANDROID STUDIO
 ------------------------------------
@@ -26,28 +38,40 @@ Open any project (or New Project -> Empty Activity, whatever is fast).
 On startup the plugin:
   - starts the embedded relay on http://localhost:8790
   - registers the REAL editor keystroke counter
+  - starts the forced-break engine (1-second tick)
 
 STEP 3 — FIND THE TOOL WINDOW
 -----------------------------
 Look at the RIGHT edge of the IDE -> vertical tab "CrunchGuard".
-Click it -> the dashboard loads INSIDE the IDE (JCEF browser).
-You should see a small badge bottom-right of the dashboard:
-  "IDE plugin mode - real editor keystrokes feed the crunch meter"
+Click it -> live control panel:
+  - crunch meter status, updating every second
+  - "Forced breaks enabled" checkbox (stop/start the engine)
+  - "Force break now" button (instant QR screen)
+  - "Settings..." shortcut
+  - "Open Dashboard" for the full browser UI
 
-STEP 4 — VERIFY REAL IDE KEYSTROKES
------------------------------------
-1. In the dashboard, start a session (or just watch the crunch meter)
-2. Type anything in a code editor
-3. The crunch meter moves WITHOUT touching the IDE-window with the
-   mouse - the keystrokes come from the editor itself, via the
-   plugin's /api/ide-activity endpoint. This is THE difference
-   vs the browser-only version.
+STEP 4 — MAKE IT TRIGGER FAST (for a quick showing)
+---------------------------------------------------
+1. Tool window -> "Settings..."
+2. Set "Sustained-typing seconds before the IDE forces a break"
+   to something small (e.g. 10) and "Steps required" to something
+   small (e.g. 20) -> Apply
+3. Type in the editor for ~10 seconds without long pauses
+   -> balloon "Crunch break triggered"
+   -> the QR screen opens IN YOUR BROWSER automatically
+4. Scan with the phone, walk the steps, watch progress sync,
+   -> IDE balloon: "Crunch Break Verified! +100 Mana"
+5. Set the values back to whatever you like (defaults: 90s/200)
 
-STEP 5 — FULL WALK CYCLE (the demo)
------------------------------------
-1. Trigger a break (or let crunch time hit)
+ANY OTHER VALUE WORKS THE SAME WAY - the fields are free numeric
+inputs, not fixed choices. Small values = fast showing, large
+values = a realistic healthy-work rhythm.
+
+STEP 5 — FULL WALK CYCLE
+------------------------
+1. Trigger a break (or let the crunch meter fill)
    -> tool window auto-focuses + balloon "Crunch break triggered"
-   -> QR code appears in the tool window
+   -> QR code appears on the break screen
 2. Scan the QR with your Android phone (same Wi-Fi)
    -> phone opens http://<LAN-IP>:8790/walk?s=<id>
    -> walk -> steps count -> progress syncs LIVE in the IDE
@@ -56,6 +80,13 @@ STEP 5 — FULL WALK CYCLE (the demo)
 
 NO PHONE AT HAND? Use Demo Mode in the dashboard header (same as
 the standalone version) - it simulates the walk.
+
+STEP 6 — TURN THE ENGINE OFF/ON (no uninstall)
+----------------------------------------------
+Tool window -> uncheck "Forced breaks enabled"
+  -> the engine stops watching; crunch resets to 0.
+Check it again to resume. Or Settings | Tools | CrunchGuard ->
+first checkbox (same switch, one Apply away).
 
 IF THE PHONE CANNOT CONNECT
 ---------------------------
@@ -69,15 +100,16 @@ KNOWN LIMITS
   so real steps on iPHONES require the without-plugin variant
   (HTTPS 8788). Android Chrome: works over HTTP. Demo Mode works
   everywhere.
-- The relay log is inside the IDE: Help -> Show Log / or look for
-  "[CrunchGuard]" lines in idea.log.
+- If a forced break is open and nobody scans the QR, it is given up
+  after 15 minutes and the engine resumes watching.
 
 WHAT GOT BUILT (sanity)
 -----------------------
-  crunchguard-plugin/lib/crunchguard-plugin-2.0.0.jar
+  crunchguard-plugin/lib/crunchguard-plugin-2.2.0.jar
     META-INF/plugin.xml
-    com/crunchguard/plugin/*.class   (relay, listener, startup,
-                                      tool window, notifier)
+    com/crunchguard/plugin/*.class   (relay, engine, settings,
+                                      listener, startup, tool window,
+                                      notifier)
     web/  index.html walk.html qrcode.min.js icon.svg manifest.json
 
 REBUILD ANY TIME

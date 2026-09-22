@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # ⚔ CrunchGuard — walk to unlock your IDE
-=======
-# ⚔ FitDeveloper
->>>>>>> 129f2a624af7a6239e04d93bd66ed965bf056bc2
 
 **42AD × JetBrains hackathon — "Help the Developer"**
 
@@ -39,7 +35,7 @@ friend-ready 2-minute setup: [`without-plugin/FRIEND_QUICKSTART.txt`](without-pl
 ```bash
 cd plugin
 gradle runIde           # sandbox IDE with the plugin loaded
-gradle buildPlugin      # -> build/distributions/CrunchGuard-2.0.0.zip
+gradle buildPlugin      # -> build/distributions/CrunchGuard-2.2.0.zip
 ```
 
 Then `Settings → Plugins → ⚙ → Install Plugin from Disk…`. Full guide:

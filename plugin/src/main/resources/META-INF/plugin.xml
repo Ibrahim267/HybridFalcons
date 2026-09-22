@@ -4,11 +4,16 @@
     <vendor>CrunchGuard (42AD x JetBrains hackathon)</vendor>
     <description><![CDATA[
     <p><b>CrunchGuard — walk to unlock your IDE.</b></p>
-    <p>Embeds the CrunchGuard dashboard as a JCEF tool window, tracks REAL editor
-    keystroke activity to fill the crunch meter, and when crunch time hits it
-    forces a walking break: a QR code appears, your phone counts steps, progress
-    syncs live through the plugin's built-in relay server (no Node.js needed).
-    Completing the walk unlocks the IDE with "Crunch Break Verified! +100 Mana".</p>
+    <p>An always-on engine inside the IDE tracks REAL editor keystrokes and fills
+    the crunch meter while you code. When sustained typing is detected the IDE
+    itself <b>forces a walking break</b>: a QR code appears, your phone counts
+    steps (DeviceMotion pedometer), progress syncs live through the plugin's
+    built-in relay server — no Node.js, no external tools. Completing the walk
+    unlocks the IDE with "Crunch Break Verified! +100 Mana".</p>
+    <p>Configure it under <b>Settings | Tools | CrunchGuard</b>: disable/enable
+    the forced-break engine without uninstalling, freely set how many seconds
+    of sustained typing trigger a break, and freely set the step target.
+    Every value is editable and applies instantly — no restart needed.</p>
     <p>This is the plugin variant of CrunchGuard. The standalone variant
     (runs in a normal browser with a Node server) lives in the
     <code>without-plugin</code> folder of the same repository.</p>
@@ -22,7 +27,10 @@
                     factoryClass="com.crunchguard.plugin.CrunchGuardToolWindowFactory"
                     icon="/web/icon.svg"/>
         <notificationGroup id="CrunchGuard" displayType="BALLOON"/>
+        <postStartupActivity implementation="com.crunchguard.plugin.CrunchGuardStartup"/>
+        <applicationConfigurable parentId="tools"
+                                 id="com.crunchguard.plugin.settings"
+                                 displayName="CrunchGuard"
+                                 instance="com.crunchguard.plugin.CrunchGuardSettings"/>
     </extensions>
-
-    <postStartupActivity implementation="com.crunchguard.plugin.CrunchGuardStartup"/>
 </idea-plugin>

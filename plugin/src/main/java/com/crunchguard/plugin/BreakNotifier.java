@@ -35,7 +35,8 @@ public final class BreakNotifier {
                     }
                 }
                 notify("Crunch break triggered",
-                        "Target: " + target + " steps — scan the QR in the CrunchGuard tool window.",
+                        "Sustained typing detected — the IDE is forcing a break. Target: "
+                                + target + " steps. The QR screen just opened in your browser.",
                         project);
             } catch (Throwable ignored) {
             }

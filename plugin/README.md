@@ -15,8 +15,24 @@ no separate server window — the relay is embedded in the IDE itself.
 | Dashboard | regular browser tab | **JCEF tool window inside the IDE** (right side) |
 | Crunch detection | input inside the browser tab only | **REAL editor keystrokes** from the IDE (every file you type in) |
 | Break trigger | QR in browser overlay | QR in the tool window **+ IDE balloon + auto-focus of the tool window** |
+| Forced breaks | not automatic — someone must watch the page | **fully automatic: the engine inside the IDE forces the break** (balloon + QR screen opens in your browser by itself) |
 | Relay server | `node server.js` (ports 8787/8788) | **embedded Java relay** (port 8790, auto-fallback up to 8795) |
 | Needs Node.js | yes | **no** |
+
+## Configure (Settings | Tools | CrunchGuard)
+
+- **Enable/disable the forced-break engine** — one checkbox, no uninstall
+  needed to stop it.
+- **Sustained-typing seconds before the IDE forces a break** — free numeric
+  field (5–3600 s). Defaults to 90.
+- **Steps required to verify the break** — free numeric field (10–5000).
+  Defaults to 200.
+
+Every value is a plain editable number: type it, press **Apply**, and the
+engine picks it up on the next tick — no IDE restart. Small values make the
+cycle fast for a quick showing; larger values model a realistic healthy-work
+rhythm. The tool window also has **"Force break now"** (instant break screen)
+and a live engine on/off checkbox.
 
 When a break starts, the tool window shows the QR; the phone walks; steps sync
 live; when the target is reached the IDE gets the
@@ -37,7 +53,7 @@ The Gradle build auto-downloads the JDK if missing.
    A sandbox IDE starts with the plugin installed.
 4. To package it: Gradle panel → `intellij → buildPlugin`.
    The installable zip appears at
-   `plugin/build/distributions/CrunchGuard-2.0.0.zip`.
+   `plugin/build/distributions/CrunchGuard-2.2.0.zip`.
 
 ### Option B — from a terminal
 
@@ -55,16 +71,16 @@ as the build JVM, with the Gradle 8.12 distribution already cached in
 `~\.gradle`. Double-click it, then watch `build_log.txt`.
 
 ```bat
-plugin\_build_plugin.bat          # -> plugin\build\distributions\crunchguard-plugin-2.0.0.zip
+plugin\_build_plugin.bat          # -> plugin\build\distributions\crunchguard-plugin-2.2.0.zip
 ```
 
-The zip name follows `rootProject.name` (`crunchguard-plugin-2.0.0.zip`),
+The zip name follows `rootProject.name` (`crunchguard-plugin-2.2.0.zip`),
 not the plugin id — both install fine.
 
 ## Install into your real IDE
 
 1. `Settings/Preferences → Plugins → ⚙ (gear icon) → Install Plugin from Disk…`
-2. Pick `plugin/build/distributions/CrunchGuard-2.0.0.zip`.
+2. Pick `plugin/build/distributions/CrunchGuard-2.2.0.zip`.
 3. Restart the IDE. The **CrunchGuard** tool window appears on the right
    (sidebar icon), and the relay prints
    `[CrunchGuard] relay on http://localhost:8790` to the IDE console/log.
