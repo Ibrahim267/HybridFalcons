@@ -1,4 +1,4 @@
-# ⚔ CrunchGuard
+# ⚔ FitDeveloper
 
 **Enforce physical movement breaks for game developers & 3D artists.**
 Desktop IDE view tracks your crunch → triggers a break → shows a QR → you walk N steps with your phone → the IDE unlocks with **+100 Mana**. Built for the 42AD × JetBrains Hackathon — *Help the Developer*.
