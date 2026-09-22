@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # ⚔ CrunchGuard — walk to unlock your IDE
+=======
+# ⚔ FitDeveloper
+>>>>>>> 129f2a624af7a6239e04d93bd66ed965bf056bc2
 
 **42AD × JetBrains hackathon — "Help the Developer"**
 
