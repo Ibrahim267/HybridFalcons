@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CrunchGuard — Walker</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<meta name="theme-color" content="#0b0f14">
+<style>
+:root{
+  --bg:#0b0f14; --panel:#11161d; --border:#1e2630;
+  --text:#d7e0ea; --dim:#7d8b9a; --cyan:#22d3ee; --emerald:#34d399; --amber:#fbbf24; --red:#f87171;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--text);min-height:100vh;
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  display:flex;flex-direction:column;align-items:center;padding:18px 16px 30px;
+  user-select:none;-webkit-user-select:none;overscroll-behavior:none;
+  touch-action:manipulation;
+}
+header{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;padding:6px 0 16px;letter-spacing:.5px}
+header .shield{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:linear-gradient(135deg,#0e7490,#059669);font-size:12px}
+header em{color:var(--cyan);font-style:normal}
+.ring-wrap{position:relative;width:min(72vw,270px);aspect-ratio:1;margin:4px 0 14px}
+.ring-wrap svg{transform:rotate(-90deg);width:100%;height:100%}
+.ring-bg{fill:none;stroke:#161d27;stroke-width:13}
+.ring-fg{fill:none;stroke:url(#grad);stroke-width:13;stroke-linecap:round;transition:stroke-dashoffset .35s}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.steps{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.of{color:var(--dim);font-size:13px;margin-top:6px}
+.state-chip{font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--border);color:var(--dim);margin-bottom:10px;text-align:center;max-width:360px}
+.state-chip.live{color:var(--emerald);border-color:rgba(52,211,153,.45)}
+.state-chip.warn{color:var(--amber);border-color:rgba(251,191,36,.45)}
+.state-chip.err{color:var(--red);border-color:rgba(248,113,113,.45)}
+.debug{
+  font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--border);
+  border-radius:9px;padding:8px 14px;margin-bottom:12px;min-width:min(88vw,360px);
+  display:none;line-height:1.7;font-variant-numeric:tabular-nums;
+  max-height:30vh;overflow-y:auto;
+}
+.debug b{color:var(--cyan)}
+.debug .bar{display:inline-block;height:6px;width:90px;background:#0a0e13;border-radius:99px;overflow:hidden;vertical-align:middle;margin-left:6px}
+.debug .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--emerald));width:0%}
+.btn{
+  width:100%;max-width:360px;padding:15px;border-radius:12px;border:1px solid var(--border);
+  background:var(--panel);color:var(--text);font-family:inherit;font-size:15px;font-weight:700;
+  cursor:pointer;transition:.15s;margin-bottom:10px;text-align:center;
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(135deg,#0891b2,#059669);border-color:transparent;color:#fff}
+.btn.tiny{max-width:360px;padding:11px;font-size:13px}
+.btn:disabled{opacity:.4}
+.demo-row{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:360px;
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:11px 15px;margin:8px 0 14px}
+.demo-row span{font-size:12px;color:var(--amber);font-weight:700}
+.switch{position:relative;width:42px;height:23px;display:inline-block;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#232c38;border-radius:99px;cursor:pointer;transition:.2s;border:1px solid var(--border)}
+.slider:before{content:"";position:absolute;width:15px;height:15px;left:3px;top:3px;background:#7d8b9a;border-radius:99px;transition:.2s}
+.switch input:checked + .slider{background:linear-gradient(90deg,#92400e,#b45309);border-color:var(--amber)}
+.switch input:checked + .slider:before{transform:translateX(19px);background:var(--amber)}
+.sync{font-size:11px;color:var(--dim);margin-top:4px;text-align:center;line-height:1.8}
+.sync b{color:var(--emerald)}
+.hint{
+  color:var(--amber);font-size:12px;text-align:center;margin-top:10px;line-height:1.75;
+  background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.25);border-radius:10px;
+  padding:10px 14px;max-width:360px;display:none;
+}
+.hint b{color:var(--amber)}
+.shake-note{font-size:11px;color:var(--dim);margin:0 0 12px;text-align:center;max-width:340px;line-height:1.7}
+/* success */
+#done{display:none;flex-direction:column;align-items:center;text-align:center;padding-top:8vh}
+#done .trophy{font-size:72px;animation:pop .5s cubic-bezier(.2,.9,.3,1.4), bounce 1.4s .6s ease-in-out infinite alternate}
+@keyframes bounce{to{transform:translateY(-10px)}}
+#done h1{font-size:26px;color:var(--emerald);margin:16px 0 6px;text-shadow:0 0 22px rgba(52,211,153,.5)}
+#done .sub{color:var(--dim);font-size:13px;line-height:1.9;margin-bottom:26px}
+#done .sub b{color:var(--amber)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.flashbar{position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--cyan),var(--emerald));opacity:0;transition:.3s}
+.flashbar.on{opacity:1}
+footer{margin-top:auto;padding-top:20px;font-size:10px;color:#3b4654}
+</style>
+</head>
+<body>
+<div class="flashbar" id="flashbar"></div>
+
+<header><span class="shield">⚔</span>Crunch<em>Guard</em> — Walker</header>
+
+<div id="main">
+  <div class="ring-wrap">
+    <svg viewBox="0 0 120 120">
+      <defs>
+        <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/>
+        </linearGradient>
+      </defs>
+      <circle class="ring-bg" cx="60" cy="60" r="52"/>
+      <circle class="ring-fg" id="ring" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+    </svg>
+    <div class="ring-center">
+      <div class="steps" id="stepNum">0</div>
+      <div class="of">of <span id="targetNum">200</span> steps</div>
+    </div>
+  </div>
+
+  <div class="state-chip" id="stateChip">◌ connecting to relay…</div>
+  <div class="debug" id="debugBox">
+    📡 sensor: <b id="dbgEvents">0</b> events · motion <b id="dbgDev">—</b> m/s²
+    <span class="bar"><i id="dbgBar"></i></span><br>
+    peak threshold: 1.2 · steps detected: <b id="dbgSteps">0</b>
+  </div>
+  <div class="shake-note">Phone in hand or pocket — walk naturally. Each real step counts via the motion sensor.</div>
+
+  <button class="btn primary" id="motionBtn">📵 Enable Motion Sensor</button>
+  <button class="btn tiny" id="tapBtn">👟 +1 Step (manual)</button>
+
+  <div class="demo-row">
+    <span>DEMO MODE: INSTANT WALK</span>
+    <label class="switch"><input type="checkbox" id="demoToggle"><span class="slider"></span></label>
+  </div>
+
+  <div class="sync" id="syncTxt">sync: —</div>
+  <div class="hint" id="hintBox"></div>
+</div>
+
+<div id="done">
+  <div class="trophy">🏆</div>
+  <h1>WALK COMPLETE!</h1>
+  <div class="sub"><b id="doneSteps">0</b> steps verified in <b id="doneTime">—</b> — the desktop just flashed green.<br>+100 Mana secured. Return to your desk, hero. ⚔</div>
+  <button class="btn primary" id="againBtn" style="max-width:260px">↻ Walk Again</button>
+</div>
+
+<footer>CrunchGuard v1.2 — walk to unlock</footer>
+
+<script>
+"use strict";
+/* ---------- session ---------- */
+const qs = new URLSearchParams(location.search);
+const sid = qs.get("s");
+const $ = (id) => document.getElementById(id);
+const UA = navigator.userAgent;
+const isIOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let target = parseInt(qs.get("target"), 10) || 200;
+let steps = 0, done = false, demoTimer = null, halfwayShown = false;
+let wakeLock = null, motionOn = false, walkStart = 0;
+/* debug counters */
+let evCount = 0, lastDev = 0, stepDetections = 0;
+
+$("targetNum").textContent = target;
+if (!window.isSecureContext) {
+  setState("⚠ insecure context (http://) — iOS will block motion sensors", "warn");
+}
+
+function setState(txt, cls) { $("stateChip").textContent = txt; $("stateChip").className = "state-chip " + (cls || ""); }
+function showHint(html) { const h = $("hintBox"); if (html) { h.style.display = "block"; h.innerHTML = html; } else h.style.display = "none"; }
+
+async function loadSession() {
+  if (!sid) { showHint("Missing session — scan the QR from the desktop view again."); return; }
+  try {
+    const r = await fetch("/api/session/" + sid);
+    if (!r.ok) throw new Error("not found");
+    const s = await r.json();
+    target = s.target; $("targetNum").textContent = target;
+    steps = Math.max(steps, s.steps); render();
+    setState(s.walkerConnected ? "✓ connected — relay live" : "✓ connected to relay", s.walkerConnected ? "live" : "");
+  } catch {
+    setState("✕ session not found — expired or wrong link", "err");
+    showHint("This session expired or the link is broken.<br>Open the desktop view, trigger a break, and scan the <b>new</b> QR.");
+  }
+}
+
+/* ---------- render + sync ---------- */
+function render() {
+  $("stepNum").textContent = steps;
+  const pct = Math.min(1, steps / target);
+  $("ring").style.strokeDashoffset = (326.7 * (1 - pct)).toFixed(1);
+}
+async function push() {
+  if (!sid) return;
+  try {
+    const r = await fetch("/api/session/" + sid + "/progress", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ steps, source: "walker", walkerName: "Phone Walker" })
+    });
+    const s = await r.json();
+    steps = Math.max(steps, s.steps);
+    $("syncTxt").innerHTML = "sync: <b>live ✓</b> · last ping " + new Date().toLocaleTimeString();
+    if (s.done && !done) win();
+  } catch {
+    $("syncTxt").textContent = "sync: retrying…";
+  }
+}
+setInterval(() => { if (motionOn || steps > 0) push(); }, 800);
+
+/* ---------- motion ---------- */
+$("motionBtn").onclick = async () => {
+  showHint("");
+  const DM = window.DeviceMotionEvent;
+  try {
+    if (DM && typeof DM.requestPermission === "function") {
+      const p = await DM.requestPermission();   // MUST be inside a user gesture
+      if (p !== "granted") {
+        setState("motion permission denied", "err");
+        showHint("Permission denied. Go to <b>Settings → Safari → Motion &amp; Orientation Access</b> (or reload and tap Allow). Meanwhile use +1 or Demo Mode.");
+        return;
+      }
+    } else if (!DM) {
+      setState("no motion API in this browser", "err");
+      showHint(
+        (isIOS
+          ? "This iOS browser has no motion API. Use <b>Safari</b>, and make sure the address starts with <b>https://</b> (accept the certificate warning) — iOS blocks sensors on http:// pages."
+          : "Try <b>Chrome</b> on Android, or use the +1 button / Demo Mode.")
+      );
+      return;
+    }
+    startStepDetection();
+  } catch (e) {
+    setState("motion error", "err");
+    showHint("Motion error: " + (e.message || e) + "<br>If on iPhone over http:// — switch to the https:// link. Meanwhile: +1 or Demo Mode.");
+  }
+};
+
+function startStepDetection() {
+  if (motionOn) return;
+  motionOn = true;
+  if (!walkStart) walkStart = Date.now();
+  $("motionBtn").textContent = "✓ Sensor Live — Walk!";
+  $("motionBtn").disabled = true;
+  $("debugBox").style.display = "block";
+  setState("listening for steps…", "");
+  if (navigator.wakeLock) navigator.wakeLock.request("screen").then(wl => wakeLock = wl).catch(() => {});
+
+  /* --- step detection: accel magnitude peak picking ---
+     magnitude |a| minus slow baseline (gravity) = deviation
+     deviation > 1.2 m/s² with 300ms refractory ≈ one step   */
+  let lastMag = 9.81, avg = 9.81, lastStep = 0;
+  addEventListener("devicemotion", (ev) => {
+    evCount++;
+    const a = ev.accelerationIncludingGravity;
+    if (!a || a.x === null || a.x === undefined) return;
+    const mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+    avg = avg * 0.92 + mag * 0.08;
+    const dev = Math.abs(mag - avg);
+    lastDev = dev;
+    const now = Date.now();
+    if (dev > 1.2 && now - lastStep > 300) {
+      lastStep = now;
+      stepDetections++;
+      countStep();
+    }
+  }, { passive: true });
+
+  /* after 3.5s with no events → targeted diagnosis */
+  setTimeout(() => {
+    if (evCount < 5) {
+      setState("⚠ sensor silent — no motion events", "err");
+      if (isIOS) {
+        showHint(
+          "<b>iOS blocks motion sensors on non-HTTPS pages.</b><br>" +
+          "Fix: open the <b>https://</b> link (scan the QR again → tap <b>visit website</b> when the certificate warning appears) → then tap Enable Motion Sensor.<br>" +
+          "Also check: Settings → Safari → Advanced → Motion &amp; Orientation Access = ON.<br>Meanwhile: +1 button or Demo Mode."
+        );
+      } else {
+        showHint(
+          "No motion events received. Try <b>Chrome</b>, check that another app isn't holding the sensor, or just use the <b>+1</b> button / <b>Demo Mode</b>."
+        );
+      }
+    }
+  }, 3500);
+
+  /* live debug readout */
+  setInterval(() => {
+    if (!motionOn) return;
+    $("dbgEvents").textContent = evCount;
+    $("dbgDev").textContent = lastDev.toFixed(2);
+    $("dbgBar").style.width = Math.min(100, lastDev / 6 * 100) + "%";
+    $("dbgSteps").textContent = stepDetections;
+  }, 400);
+}
+
+function countStep() {
+  if (done) return;
+  steps++;
+  render();
+  if (navigator.vibrate) navigator.vibrate(18);
+  if (!halfwayShown && target > 40 && steps >= Math.floor(target / 2)) {
+    halfwayShown = true;
+    setState("halfway there — keep going! 💪", "warn");
+  }
+  if (steps > 0 && steps % 50 === 0 && navigator.vibrate) navigator.vibrate([40, 30, 40]);
+  if (steps >= target) { push(); win(); }
+}
+$("tapBtn").onclick = () => { if (!motionOn) startStepDetection(); countStep(); };
+
+/* ---------- demo mode ---------- */
+$("demoToggle").onchange = (e) => {
+  if (e.target.checked) {
+    if (!motionOn) startStepDetection();
+    setState("🏃 instant walk — simulating steps", "warn");
+    demoTimer = setInterval(() => {
+      if (done) return clearInterval(demoTimer);
+      for (let i = 0; i < 18; i++) { steps++; if (steps >= target) break; }
+      render();
+      if (steps >= target) { push(); win(); }
+    }, 300);
+  } else if (demoTimer) { clearInterval(demoTimer); demoTimer = null; setState("demo off", ""); }
+};
+
+/* ---------- win ---------- */
+function win() {
+  if (done) return;
+  done = true;
+  if (demoTimer) clearInterval(demoTimer);
+  render();
+  const durSec = walkStart ? Math.max(1, Math.round((Date.now() - walkStart) / 1000)) : 0;
+  $("doneTime").textContent = durSec >= 60 ? Math.floor(durSec / 60) + "m " + (durSec % 60) + "s" : durSec + "s";
+  $("flashbar").classList.add("on");
+  if (navigator.vibrate) navigator.vibrate([90, 60, 90, 60, 160]);
+  push();
+  setTimeout(() => {
+    $("main").style.display = "none";
+    $("done").style.display = "flex";
+    $("doneSteps").textContent = steps;
+  }, 550);
+}
+$("againBtn").onclick = () => {
+  done = false; steps = 0; halfwayShown = false; render();
+  $("done").style.display = "none";
+  $("main").style.display = "flex";
+  $("flashbar").classList.remove("on");
+  setState("✓ connected — start walking", "live");
+};
+
+loadSession(); render();
+
+/* ---------- screen-lock resilience ---------- */
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !done && (motionOn || steps > 0)) {
+    push();
+    if (navigator.wakeLock && !wakeLock) {
+      navigator.wakeLock.request("screen").then(w => wakeLock = w).catch(() => {});
+    }
+  }
+});
+addEventListener("pageshow", () => {
+  if (!done && (motionOn || steps > 0)) { loadSession(); push(); }
+});
+</script>
+</body>
+</html>

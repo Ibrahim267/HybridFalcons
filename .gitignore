@@ -1,24 +1,32 @@
-# ===== CRITICAL: private keys =====
-# GitHub push protection BLOCKS pushes that contain private keys.
-# The app runs HTTP-only without them (Android walkers work fine);
-# regenerate with gen_cert.sh (macOS/Linux) or gen_cert.bat (Windows).
-cert.pem
-key.pem
+# ============ CrunchGuard (two-variant repo) ============
 
-# ===== logs =====
+# ---- logs & local junk ----
 *.log
+server.pid
+probe*.js
+_start_cg.bat
 
-# ===== OS junk =====
+# ---- build artifacts & zips ----
+*.zip
+build/
+.gradle/
+plugin/.intellijPlatform/
+
+# ---- IDE ----
+.idea/
+*.iml
+
+# ---- OS junk ----
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ===== local-only dev helpers (not part of the public project) =====
-probe.js
-probe2.js
-make_zip.ps1
-install_phase2.bat
-launch_install.bat
-
-# ===== deps (none today — zero-dependency project, future-proofing) =====
+# ---- Node (standalone variant) ----
 node_modules/
+
+# ---- self-signed certs (without-plugin variant) ----
+# GitHub push-protection rejects private keys, and the cert is regenerable:
+# run without-plugin/gen_cert.bat (Windows) or gen_cert.sh (macOS/Linux/Git Bash)
+# after a fresh clone. Android walkers work without certs; iOS needs them.
+without-plugin/cert.pem
+without-plugin/key.pem
