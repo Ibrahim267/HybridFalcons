@@ -1,4 +1,4 @@
-=== CrunchGuard plugin build started 23/09/2026  0:19:22.76 === 
+=== CrunchGuard plugin build started 23/09/2026  0:57:23.41 === 
 JAVA_HOME=C:\Program Files\Android\Android Studio\jbr 
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.12/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
@@ -30,7 +30,7 @@ Note: Recompile with -Xlint:deprecation for details.
 
 [Incubating] Problems report is available at: file:///C:/Users/loq/Documents/hackathons/JetBrains/CrunchGuard/plugin/build/reports/problems/problems-report.html
 
-BUILD SUCCESSFUL in 51s
+BUILD SUCCESSFUL in 17s
 13 actionable tasks: 13 executed
 EXITCODE=0 
-=== build finished 23/09/2026  0:20:14.86 === 
+=== build finished 23/09/2026  0:57:41.92 === 

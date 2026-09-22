@@ -1,8 +1,11 @@
 @echo off
 rem ============================================================
-rem  CrunchGuard PLUGIN - firewall fix (Windows)
-rem  Opens TCP 8790-8795 so the phone can reach the relay that
-rem  runs inside the IDE. Run once, as administrator.
+rem  CrunchGuard PLUGIN - firewall fix (Windows) - TIGHT version
+rem  Allows the phone to reach the relay inside the IDE, but ONLY:
+rem    - on Private networks (your home Wi-Fi)
+rem    - from devices on the SAME Wi-Fi (LocalSubnet)
+rem  Internet traffic and public-Wi-Fi strangers stay blocked.
+rem  To undo: run firewall_remove_plugin.bat
 rem ============================================================
 net session >nul 2>&1
 if %errorlevel% neq 0 (
@@ -12,13 +15,18 @@ if %errorlevel% neq 0 (
 )
 
 netsh advfirewall firewall delete rule name="CrunchGuard Plugin" >nul 2>&1
-netsh advfirewall firewall add rule name="CrunchGuard Plugin" dir=in action=allow protocol=TCP localport=8790-8795
+netsh advfirewall firewall add rule name="CrunchGuard Plugin" dir=in action=allow protocol=TCP localport=8790-8795 profile=private remoteip=localsubnet
 if %errorlevel% equ 0 (
   echo.
-  echo   [OK] Ports 8790-8795 are open - the phone can now connect.
-  echo        Restart the IDE so the plugin relay picks it up.
+  echo   [OK] Rule added - scoped to Private networks + LocalSubnet only.
+  echo.
+  echo   NOTE: your Wi-Fi "ABA2" is currently marked PUBLIC in Windows,
+  echo   so this rule will not apply until you mark it Private:
+  echo     Settings - Network and Internet - Wi-Fi - ABA2 - Private network
+  echo.
+  echo   To close the ports again later: run firewall_remove_plugin.bat
 ) else (
-  echo   [FAIL] Could not add the firewall rule - add it manually.
+  echo   [FAIL] Could not add the rule - add it manually.
 )
 echo.
 pause

@@ -1,4 +1,4 @@
-<idea-plugin since-build="242">
+<idea-plugin>
     <id>com.crunchguard.plugin</id>
     <name>CrunchGuard</name>
     <vendor>CrunchGuard (42AD x JetBrains hackathon)</vendor>
