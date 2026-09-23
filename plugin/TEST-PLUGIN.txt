@@ -8,7 +8,7 @@ THE ZIP IS ALREADY ON YOUR DESKTOP:
 
 WHAT'S NEW IN v2.4.1
 ----------------------
-- REBRAND: the plugin is now "FitDeveloper" (was CrunchGuard).
+- REBRAND: the plugin is now "FitDeveloper" (old prototype name fully retired).
   Same engine, same features — new name in the tool window,
   settings page, dashboard, phone walker page and logs.
 - WORKS IN INTELLIJ IDEA TOO: verified live in IntelliJ IDEA

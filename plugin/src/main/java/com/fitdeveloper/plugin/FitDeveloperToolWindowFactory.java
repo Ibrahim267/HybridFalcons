@@ -1,6 +1,5 @@
 package com.fitdeveloper.plugin;
 
-import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
@@ -13,47 +12,53 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import java.awt.Color;
 import java.awt.Desktop;
-import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Dimension;
 import java.net.URI;
 
 /**
- * The FitDeveloper tool window.
+ * The FitDeveloper tool window — a STATUS panel, not a second settings page.
  *
- * The NATIVE control panel is always the first tab — the big countdown, the
- * crunch meter and both switches are plain Swing, so they render in every
- * IDE (IntelliJ IDEA, Android Studio) even where JCEF is missing or blank.
- * When JCEF is available a second tab embeds the web dashboard; it can never
- * blank out the controls anymore.
+ * Design rule (3.0.0): everything configurable lives in
+ * Settings | Tools | FitDeveloper; the tool window only SHOWS what the
+ * engine is doing. So the old engine checkbox, timer-mode selector and
+ * "Force break now" button are gone — they either duplicated Settings or
+ * fought the product rule that breaks come from the engine alone.
  *
- * JCEF is accessed ONLY via reflection (see {@link #embeddedDashboard}):
- * since 2024.2 the platform ships JCEF in a separate module that is not on
- * a plugin's classpath unless declared, and referencing JBCefApp directly
- * used to kill the whole tool window on fresh IntelliJ builds (the infamous
- * "plugin shows empty" bug). Now the worst case is simply no web tab.
+ * What remains:
+ *   - a BIG ticking break countdown, color-escalating cyan -> amber -> red,
+ *     mirrored from the engine — in the DEFAULT "continuous" mode it ticks
+ *     every second you sit at the machine (typing NOT required); in the
+ *     "only while typing" mode it counts typing seconds and cools down
+ *     when you stop
+ *   - at 100% the break fires AUTOMATICALLY — typing is locked until the
+ *     walk is verified; live step progress while it is open
+ *   - a live QR for the phone walker (pure-Java {@link QrCode}, no JCEF
+ *     needed — Android Studio has none) that appears ONLY once the countdown
+ *     has finished and the break is actually open — scanning it joins that
+ *     walk directly; while counting down the panel is hidden entirely
+ *   - two shortcuts: the Settings page and the browser dashboard
  *
- * Native panel shows:
- *   - a BIG ticking break countdown (90 -> 89 -> 88 ... while you type),
- *     color-escalating cyan -> amber -> red, mirrored from the engine
- *   - "BREAK DUE" at 100% — and, unless the demo switch is on, that is all
- *     that happens (nothing is forced, nothing is blocked)
- *   - live crunch meter + step progress while a break is open
- *   - engine on/off + DEMO "block typing" switches
- *   - "Force break now" — instant step-counting demo (blocking only in demo)
- *   - shortcut to Settings | Tools | FitDeveloper
- *   - "Open Dashboard" for the full browser UI
+ * The whole layout is GridBag-driven and reflows when the tool window is
+ * resized: text blocks are line-wrapping JTextAreas, the progress bar and
+ * text stretch horizontally, and a scroll pane catches very small sizes.
+ *
+ * JCEF (web dashboard tab) is accessed ONLY via reflection — the worst case
+ * on any IDE is simply no web tab, never a blank control panel.
  */
 public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
 
@@ -66,11 +71,13 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
 
     private JLabel cdTitle;
     private JLabel cdNum;
-    private JLabel cdUnit;
+    private JTextArea cdUnit;
+    private JTextArea status;
     private JProgressBar bar;
-    private JLabel status;
-    private JCheckBox enabled;
-    private JCheckBox demoBlock;
+    private QrView qrView;
+    private JTextArea qrCaption;
+    private JBPanel<JBPanel<?>> qrPanel;
+    private String qrCurrentUrl = null; // URL currently encoded in the QR (null = hidden)
     private Object browser; // JBCefBrowser via reflection, kept for disposal
 
     @Override
@@ -79,8 +86,8 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         String url = FitDeveloperServer.baseUrl() + "/";
         var factory = toolWindow.getContentManager().getFactory();
 
-        // Tab 1 — native control panel, ALWAYS present (never blank).
-        var nativeContent = factory.createContent(fallbackPanel(project, url), "Control Panel", false);
+        // Tab 1 — native status panel, ALWAYS present (never blank).
+        var nativeContent = factory.createContent(statusPanel(project, url), "Status", false);
         toolWindow.getContentManager().addContent(nativeContent);
 
         // Tab 2 — embedded web dashboard, only when JCEF actually works.
@@ -102,7 +109,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
     /**
      * Builds the JCEF dashboard WITHOUT any compile-time reference to JCEF
      * classes. Returns null whenever JCEF is unavailable for any reason —
-     * the native control panel keeps working either way.
+     * the native status panel keeps working either way.
      */
     private JComponent embeddedDashboard(String url) {
         try {
@@ -121,51 +128,56 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         }
     }
 
-    private JComponent fallbackPanel(Project project, String url) {
+    /** Small wrapping text block that reflows with the tool window width. */
+    private static JTextArea wrapArea(String text, float fontScale, JBColor color) {
+        JTextArea a = new JTextArea(text);
+        a.setEditable(false);
+        a.setFocusable(false);
+        a.setOpaque(false);
+        a.setLineWrap(true);
+        a.setWrapStyleWord(true);
+        a.setBorder(null);
+        a.setFont(a.getFont().deriveFont(Font.PLAIN, 11f * fontScale));
+        a.setForeground(color);
+        return a;
+    }
+
+    private JComponent statusPanel(Project project, String url) {
         JBPanel<JBPanel<?>> panel = new JBPanel<>(new GridBagLayout());
 
         JLabel title = new JLabel("\u2694 FitDeveloper", SwingConstants.CENTER);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
 
-        JLabel note = new JLabel("<html><body style='width:380px;text-align:center'>"
-                + "The relay runs inside your IDE — it watches your typing and fills the crunch "
-                + "meter. By default it NEVER interrupts you: at 100% it just shows \u201cBREAK DUE\u201d. "
-                + "Start a break yourself with \u201cForce break now\u201d, or flip the demo switch "
-                + "to make breaks block typing until you walk.<br>"
-                + "<span style='color:#7d8b9a'>dashboard: " + url + "</span></body></html>");
-        note.setHorizontalAlignment(SwingConstants.CENTER);
-        note.setForeground(DIM);
-        note.setFont(note.getFont().deriveFont(Font.PLAIN, 11f));
+        JTextArea tagline = wrapArea(
+                "The countdown runs while you work. At 100% a walk break opens "
+                        + "automatically \u2014 walk until your phone verifies the steps and the IDE unlocks.",
+                1.0f, DIM);
 
         /* ---------- the countdown card ---------- */
         JBPanel<JBPanel<?>> card = new JBPanel<>(new GridBagLayout());
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(8, 26, 14, 26)));
+                BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(8, 16, 12, 16)));
 
         cdTitle = new JLabel("CONNECTING…", SwingConstants.CENTER);
         cdTitle.setForeground(DIM);
         cdTitle.setFont(cdTitle.getFont().deriveFont(Font.BOLD, 11f));
 
         cdNum = new JLabel("—", SwingConstants.CENTER);
-        cdNum.setFont(new Font(Font.MONOSPACED, Font.BOLD, 64));
+        cdNum.setFont(new Font(Font.MONOSPACED, Font.BOLD, 60));
         cdNum.setForeground(CYAN);
 
-        cdUnit = new JLabel("starting the engine…", SwingConstants.CENTER);
-        cdUnit.setForeground(DIM);
-        cdUnit.setFont(cdUnit.getFont().deriveFont(Font.PLAIN, 11f));
+        cdUnit = wrapArea("starting the engine…", 1.0f, DIM);
 
         bar = new JProgressBar(0, 100);
         bar.setStringPainted(true);
         bar.setString("crunch 0%");
-        bar.setPreferredSize(new Dimension(330, 22));
 
-        status = new JLabel(" ", SwingConstants.CENTER);
-        status.setForeground(DIM);
-        status.setFont(status.getFont().deriveFont(Font.PLAIN, 11f));
+        status = wrapArea(" ", 1.0f, DIM);
 
         GridBagConstraints cc = new GridBagConstraints();
         cc.gridx = 0;
-        cc.gridy = 0;
+        cc.weightx = 1;
+        cc.fill = GridBagConstraints.HORIZONTAL;
         cc.insets = new Insets(4, 0, 2, 0);
         card.add(cdTitle, cc);
         cc.gridy = 1;
@@ -180,30 +192,34 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         cc.insets = new Insets(8, 0, 0, 0);
         card.add(status, cc);
 
-        /* ---------- controls ---------- */
-        enabled = new JCheckBox("Engine enabled (watch typing, fill the crunch meter)");
-        enabled.setSelected(FitDeveloperSettings.isEnabled());
-        enabled.addActionListener(e -> {
-            PropertiesComponent.getInstance().setValue("fitdeveloper.enabled", String.valueOf(enabled.isSelected()));
-            System.out.println("[FitDeveloper] engine " + (enabled.isSelected() ? "resumed" : "paused") + " (tool window toggle)");
-        });
+        /* ---------- phone walker QR (visible only while a break is open) ---------- */
+        qrPanel = new JBPanel<>(new GridBagLayout());
+        qrPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Phone walker"),
+                BorderFactory.createEmptyBorder(2, 10, 8, 10)));
+        qrPanel.setVisible(false); // 3.1.0: appears only when the countdown finishes
 
-        demoBlock = new JCheckBox("Demo: block typing while a break is open");
-        demoBlock.setSelected(FitDeveloperSettings.blockTypingEnabled());
-        demoBlock.addActionListener(e -> {
-            PropertiesComponent.getInstance().setValue("fitdeveloper.blockTyping", String.valueOf(demoBlock.isSelected()));
-            System.out.println("[FitDeveloper] demo typing-block " + (demoBlock.isSelected() ? "ON" : "OFF") + " (tool window toggle)");
-        });
+        qrView = new QrView();
+        qrView.setForeground(new JBColor(Color.BLACK, new Color(210, 218, 226)));
 
-        JButton force = new JButton("Force break now");
-        force.addActionListener(e -> {
-            try {
-                FitDeveloperEngine.forceBreakNow();
-            } catch (Throwable ignored) {
-            }
-        });
+        qrCaption = wrapArea("BREAK OPEN \u2014 scan now and walk until the IDE unlocks!",
+                1.0f, DIM);
 
-        JButton settings = new JButton("Settings...");
+        GridBagConstraints qc = new GridBagConstraints();
+        qc.gridx = 0;
+        qc.weightx = 1;
+        qc.fill = GridBagConstraints.NONE;
+        qc.anchor = GridBagConstraints.CENTER;
+        qc.insets = new Insets(2, 0, 6, 0);
+        qrPanel.add(qrView, qc);
+        qc.gridy = 1;
+        qc.fill = GridBagConstraints.HORIZONTAL;
+        qc.insets = new Insets(0, 0, 0, 0);
+        qrPanel.add(qrCaption, qc);
+
+        /* ---------- shortcuts (the controls live in Settings) ---------- */
+        JButton settings = new JButton("Open Settings…");
+        settings.setToolTipText("Settings | Tools | FitDeveloper — engine, timer mode, minutes, steps");
         settings.addActionListener(e -> {
             try {
                 ShowSettingsUtil.getInstance().showSettingsDialog(project, FitDeveloperSettings.class);
@@ -211,7 +227,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
             }
         });
 
-        JButton open = new JButton("Open Dashboard");
+        JButton open = new JButton("Browser Dashboard");
         open.setToolTipText(url);
         open.addActionListener(e -> {
             try {
@@ -221,7 +237,6 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         });
 
         JPanel buttons = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 8, 0));
-        buttons.add(force);
         buttons.add(settings);
         buttons.add(open);
         buttons.setOpaque(false);
@@ -231,58 +246,83 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
 
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
-        c.gridy = 0;
-        c.anchor = GridBagConstraints.CENTER;
-        c.insets = JBUI.insets(14, 18, 4, 18);
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.NORTH;
+        c.insets = JBUI.insets(12, 14, 4, 14);
         panel.add(title, c);
         c.gridy = 1;
-        c.insets = JBUI.insets(4, 18, 10, 18);
-        panel.add(note, c);
+        c.insets = JBUI.insets(2, 14, 8, 14);
+        panel.add(tagline, c);
         c.gridy = 2;
-        c.insets = JBUI.insets(2, 18, 2, 18);
+        c.insets = JBUI.insets(2, 14, 6, 14);
         panel.add(card, c);
         c.gridy = 3;
-        c.insets = JBUI.insets(12, 18, 2, 18);
-        panel.add(enabled, c);
+        c.insets = JBUI.insets(0, 10, 6, 10);
+        panel.add(qrPanel, c);
         c.gridy = 4;
-        c.insets = JBUI.insets(2, 18, 2, 18);
-        panel.add(demoBlock, c);
-        c.gridy = 5;
-        c.insets = JBUI.insets(10, 18, 16, 18);
+        c.insets = JBUI.insets(2, 14, 12, 14);
         panel.add(buttons, c);
+        c.gridy = 5;
+        c.weighty = 1; // absorb extra height so the content stays top-centered
+        c.fill = GridBagConstraints.NONE;
+        panel.add(new JPanel(), c);
 
-        return panel;
+        JScrollPane scroll = new JScrollPane(panel);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.setBorder(null);
+        return scroll;
+    }
+
+    /** The phone-walk URL for the open break session. */
+    private static String walkUrl(String sessionId) {
+        String base;
+        try {
+            int https = FitDeveloperServer.httpsPort();
+            base = https > 0
+                    ? "https://" + FitDeveloperServer.lanIP() + ":" + https
+                    : "http://" + FitDeveloperServer.lanIP() + ":" + FitDeveloperServer.port();
+        } catch (Throwable t) {
+            base = FitDeveloperServer.baseUrl();
+        }
+        return base + "/walk?s=" + sessionId;
+    }
+
+    /** Seconds as a wall clock for the big number: 45 -> "45", 2705 -> "45:05". */
+    private static String clock(int sec) {
+        return sec >= 60 ? String.format("%d:%02d", sec / 60, sec % 60) : String.valueOf(sec);
+    }
+
+    /** Unit words matching {@link #clock(int)}: "minutes:seconds" or "seconds". */
+    private static String clockWords(int sec) {
+        return sec >= 60 ? "minutes:seconds" : "seconds";
     }
 
     /** One snapshot of the engine, painted into the big countdown every second. */
     private void refresh() {
         try {
-            boolean on = FitDeveloperSettings.isEnabled();
-            if (on != enabled.isSelected()) {
-                enabled.setSelected(on); // settings page can flip it too
-            }
-            boolean lockOn = FitDeveloperSettings.blockTypingEnabled();
-            if (lockOn != demoBlock.isSelected()) {
-                demoBlock.setSelected(lockOn);
-            }
             int target = FitDeveloperSettings.targetSteps();
 
-            if (!on) {
-                cdTitle.setText("ENGINE PAUSED");
-                cdNum.setText("—");
-                cdNum.setForeground(DIM);
-                cdUnit.setText("tick the engine checkbox below to resume");
-                bar.setMaximum(100);
-                bar.setValue(0);
-                bar.setString("crunch 0%");
-                status.setText("engine OFF · nothing is watched, nothing is interrupted");
-                return;
-            }
-
+            // keep the QR in sync with the break lifecycle:
+            // visible ONLY while a break session is open (countdown finished)
             String fid = FitDeveloperEngine.forcedSessionId();
             if (fid == null) {
                 fid = FitDeveloperEngine.activeBreakSessionId();
             }
+            updateQr(fid);
+
+            if (!FitDeveloperSettings.isEnabled()) {
+                cdTitle.setText("ENGINE PAUSED");
+                cdNum.setText("—");
+                cdNum.setForeground(DIM);
+                cdUnit.setText("enable the engine in Settings | Tools | FitDeveloper to resume");
+                bar.setMaximum(100);
+                bar.setValue(0);
+                bar.setString("crunch 0%");
+                status.setText("engine paused \u2014 nothing is watched, nothing is interrupted");
+                return;
+            }
+
             if (fid != null) {
                 FitDeveloperServer.Session s = FitDeveloperServer.sessionById(fid);
                 int steps = s != null ? s.steps : 0;
@@ -290,51 +330,143 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
                 cdTitle.setText("BREAK OPEN — WALK TO UNLOCK");
                 cdNum.setText(String.valueOf(steps));
                 cdNum.setForeground(EMERALD);
-                cdUnit.setText("of " + tgt + " steps · the IDE unlocks at the finish");
+                cdUnit.setText("of " + tgt + " steps \u00b7 the IDE unlocks at the finish");
                 bar.setMaximum(tgt);
                 bar.setValue(steps);
                 bar.setString(steps + " / " + tgt + " steps");
-                status.setText(lockOn
-                        ? "your phone counts real steps — typing stays blocked until verified"
-                        : "demo blocking is OFF — typing stays unlocked, this is just the step counter");
+                status.setText("your phone counts real steps \u2014 typing stays blocked until the walk is verified");
                 return;
             }
 
             bar.setMaximum(100);
             double cr = FitDeveloperEngine.crunch();
-            long ago = EditorActivityListener.lastActivityAgoSec();
-            boolean typing = ago >= 0 && ago < 3;
             int ramp = Math.max(5, FitDeveloperSettings.rampSeconds());
             int left = (int) Math.ceil((100.0 - cr) * ramp / 100.0);
             bar.setValue((int) cr);
             bar.setString("crunch " + (int) cr + "%");
-            status.setText("target " + target + " steps · engine is watching your typing");
 
-            if (typing) {
+            boolean typingOnly = FitDeveloperSettings.timerTypingOnly();
+            String modeNote = typingOnly ? "typing mode" : "continuous countdown";
+
+            if (!typingOnly) {
+                /* continuous countdown: ticks every second at the machine,
+                   typing or not — the meter never cools down */
+                status.setText("target " + target + " steps \u00b7 " + modeNote + " (change in Settings)");
                 if (left <= 0) {
-                    // meter is full — what happens next depends on the demo switch
                     cdTitle.setText("BREAK DUE");
                     cdNum.setText("0");
                     cdNum.setForeground(RED);
-                    cdUnit.setText(lockOn
-                            ? "forcing the walk now (demo blocking is ON)"
-                            : "demo blocking is OFF — keep coding, nothing will interrupt you");
+                    cdUnit.setText("opening the walk break \u2014 walk to unlock");
                 } else {
                     double frac = ramp > 0 ? (double) left / ramp : 1.0;
                     cdTitle.setText("BREAK DUE IN");
-                    cdNum.setText(String.valueOf(left));
+                    cdNum.setText(clock(left));
                     cdNum.setForeground(frac > 0.55 ? CYAN : frac > 0.22 ? AMBER : RED);
-                    cdUnit.setText("seconds of typing until 100% crunch"
-                            + (lockOn ? " (then the break fires)" : " (demo blocking is OFF)"));
+                    cdUnit.setText(clockWords(left) + " at this machine until 100% crunch"
+                            + " (then the walk starts)");
+                }
+                return;
+            }
+
+            long ago = EditorActivityListener.lastActivityAgoSec();
+            boolean typing = ago >= 0 && ago < 3;
+            status.setText("target " + target + " steps \u00b7 " + modeNote + " (change in Settings)");
+
+            if (typing) {
+                if (left <= 0) {
+                    cdTitle.setText("BREAK DUE");
+                    cdNum.setText("0");
+                    cdNum.setForeground(RED);
+                    cdUnit.setText("opening the walk break \u2014 walk to unlock");
+                } else {
+                    double frac = ramp > 0 ? (double) left / ramp : 1.0;
+                    cdTitle.setText("BREAK DUE IN");
+                    cdNum.setText(clock(left));
+                    cdNum.setForeground(frac > 0.55 ? CYAN : frac > 0.22 ? AMBER : RED);
+                    cdUnit.setText(clockWords(left) + " of typing until 100% crunch (then the walk starts)");
                 }
             } else {
                 cdTitle.setText("COOLING DOWN");
                 cdNum.setText("—");
                 cdNum.setForeground(DIM);
-                cdUnit.setText("idle — start typing to arm the countdown");
+                cdUnit.setText("idle \u2014 start typing to arm the countdown");
             }
         } catch (Throwable ignored) {
             // never let a UI hiccup kill the timer
+        }
+    }
+
+    /**
+     * Keeps the QR in sync with the break lifecycle (3.1.0 rule): the QR is
+     * shown ONLY while a walk break is actually open — i.e. AFTER the
+     * countdown has finished. While the countdown runs (or the engine is
+     * paused) the panel is hidden, so the tool window stays a pure status
+     * display. The QR is regenerated only when the encoded URL changes.
+     */
+    private void updateQr(String sessionId) {
+        if (sessionId == null) {
+            if (qrPanel.isVisible()) {
+                qrCurrentUrl = null;
+                qrView.setQr(null);
+                qrPanel.setVisible(false);
+            }
+            return;
+        }
+        String want = walkUrl(sessionId);
+        if (!want.equals(qrCurrentUrl)) {
+            qrCurrentUrl = want;
+            try {
+                qrView.setQr(new QrCode(want));
+            } catch (Throwable t) {
+                qrView.setQr(null);
+            }
+            qrCaption.setText("BREAK OPEN \u2014 scan now and walk until the IDE unlocks!");
+        }
+        qrPanel.setVisible(true);
+    }
+
+    /**
+     * Minimal theme-aware QR renderer: paints the {@link QrCode} matrix with
+     * a 4-module quiet zone, scaled to whatever space the tool window gives
+     * it. Regeneration is handled by {@link #updateQr(String)}.
+     */
+    private static final class QrView extends JComponent {
+        private QrCode qr;
+
+        void setQr(QrCode q) {
+            this.qr = q;
+            repaint();
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(148, 148);
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return new Dimension(64, 64);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            if (qr == null) {
+                return;
+            }
+            int quiet = 4;
+            int cells = qr.size + quiet * 2;
+            int cell = Math.max(1, Math.min(getWidth(), getHeight()) / cells);
+            int px = cell * cells;
+            int ox = (getWidth() - px) / 2;
+            int oy = (getHeight() - px) / 2;
+            g.setColor(getForeground());
+            for (int y = 0; y < qr.size; y++) {
+                for (int x = 0; x < qr.size; x++) {
+                    if (qr.modules[y][x]) {
+                        g.fillRect(ox + (x + quiet) * cell, oy + (y + quiet) * cell, cell, cell);
+                    }
+                }
+            }
         }
     }
 }

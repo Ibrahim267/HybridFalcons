@@ -1,4 +1,4 @@
-// CrunchGuard end-to-end test — runs on the laptop against localhost:8787
+// FitDeveloper end-to-end test — runs on the laptop against localhost:8787
 const BASE = "http://localhost:8787";
 let pass = 0, fail = 0;
 
@@ -33,7 +33,7 @@ function ok(name, cond, extra) {
   // 4. static index
   r = await fetch(BASE + "/");
   const html = await r.text();
-  ok("index.html served", r.status === 200 && html.includes("CrunchGuard"), "status " + r.status);
+  ok("index.html served", r.status === 200 && html.includes("FitDeveloper"), "status " + r.status);
   ok("index references qrcode lib", html.includes("qrcode.min.js"));
 
   // 5. walk route
@@ -78,7 +78,7 @@ function ok(name, cond, extra) {
   // 11. PWA manifest
   r = await fetch(BASE + "/manifest.json");
   j = await r.json();
-  ok("manifest.json served", r.status === 200 && j.name === "CrunchGuard Walker", JSON.stringify(j).slice(0, 80));
+  ok("manifest.json served", r.status === 200 && j.name === "FitDeveloper Walker", JSON.stringify(j).slice(0, 80));
 
   // 12. CORS preflight
   r = await fetch(BASE + "/api/session", { method: "OPTIONS" });

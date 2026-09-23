@@ -39,14 +39,6 @@ body{
 .chip.ok .dot{background:var(--emerald); box-shadow:0 0 6px var(--emerald)}
 .chip.ok{color:var(--emerald)}
 .spacer{flex:1}
-/* demo toggle */
-.demo-wrap{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--amber)}
-.switch{position:relative;width:40px;height:21px;display:inline-block}
-.switch input{opacity:0;width:0;height:0}
-.slider{position:absolute;inset:0;background:#232c38;border-radius:99px;cursor:pointer;transition:.2s;border:1px solid var(--border)}
-.slider:before{content:"";position:absolute;width:14px;height:14px;left:3px;top:2.6px;background:#7d8b9a;border-radius:99px;transition:.2s}
-.switch input:checked + .slider{background:linear-gradient(90deg,#92400e,#b45309);border-color:var(--amber)}
-.switch input:checked + .slider:before{transform:translateX(18px);background:var(--amber)}
 /* ---------- layout ---------- */
 .wrap{max-width:1060px;margin:0 auto;padding:26px 18px 60px}
 .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
@@ -58,12 +50,9 @@ body{
 }
 @media(max-width:560px){
   .hide-sm{display:none}
-  .demo-wrap>span{display:none}
   .chip{font-size:10px;padding:3px 7px}
-  .controls .btn,.demo-row .btn{font-size:12px;padding:11px 6px}
+  .controls .btn,.btn-row .btn{font-size:12px;padding:11px 6px}
   .mode-btn{font-size:11px;padding:9px 2px;white-space:nowrap}
-  .stats-row{flex-wrap:wrap}
-  .mini{flex:1 1 40%}
   .cd{gap:11px;padding:10px 12px}
   .cd-ring,.cd-ring svg{width:64px;height:64px}
   .clock{font-size:52px}
@@ -110,11 +99,7 @@ body{
 .btn:hover{border-color:#334155}
 .btn.primary{background:linear-gradient(135deg,#0891b2,#059669);border-color:transparent;color:#fff}
 .btn.primary:hover{filter:brightness(1.12)}
-.btn.danger{background:linear-gradient(135deg,#b45309,#dc2626);border-color:transparent;color:#fff}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.stats-row{display:flex;gap:16px;justify-content:center;margin-top:16px}
-.mini{font-size:11px;color:var(--dim);text-align:center}
-.mini b{display:block;font-size:17px;color:var(--text);font-variant-numeric:tabular-nums}
 /* ---------- break countdown strip (IDE engine) ---------- */
 .cd{
   display:flex;align-items:center;gap:14px;padding:10px 14px;margin-bottom:16px;
@@ -201,8 +186,8 @@ body{
 .pbar-label b{color:var(--emerald);font-variant-numeric:tabular-nums}
 .walker-chip{font-size:11px;color:var(--dim);margin-bottom:14px}
 .walker-chip.on{color:var(--emerald)}
-.demo-row{display:flex;gap:10px;justify-content:center}
-.demo-row .btn{flex:1 1 0;min-width:0;padding:11px 8px;white-space:nowrap;text-align:center}
+.btn-row{display:flex;gap:10px;justify-content:center}
+.btn-row .btn{flex:1 1 0;min-width:0;padding:11px 8px;white-space:nowrap;text-align:center}
 /* success */
 .success{display:none}
 .success .big{font-size:30px;font-weight:800;color:var(--emerald);text-shadow:0 0 26px rgba(52,211,153,.55);animation:glow 1.2s ease infinite alternate}
@@ -235,14 +220,10 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 <body>
 
 <div class="topbar">
-  <div class="logo"><span class="shield">⚔</span>Crunch<em>Guard</em></div>
+  <div class="logo"><span class="shield">⚔</span>Fit<em>Developer</em></div>
   <div class="chip ok" id="relayChip"><span class="dot"></span><span id="relayTxt">relay: connecting…</span></div>
   <div class="spacer"></div>
   <button class="chip" id="soundBtn" title="Toggle sounds">🔊 sound</button>
-  <div class="demo-wrap" title="Simulate the walker for stage demos — no phone needed">
-    <span>DEMO MODE: INSTANT WALK</span>
-    <label class="switch"><input type="checkbox" id="demoToggle"><span class="slider"></span></label>
-  </div>
 </div>
 
 <div class="wrap">
@@ -287,7 +268,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 
       <div id="crunchUI" style="display:none">
         <div class="clock" id="crunchClock">0%</div>
-        <div class="crunch-label">crunch meter — sustained typing/mouse activity fills it</div>
+        <div class="crunch-label">crunch meter — filled by the IDE engine as you work</div>
         <div class="meter" id="crunchMeter"><div></div></div>
       </div>
 
@@ -300,14 +281,6 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
       <div class="controls">
         <button class="btn primary" id="startBtn">▶ Start</button>
         <button class="btn" id="resetBtn">↺ Reset</button>
-        <button class="btn danger" id="breakNowBtn">⚡ <span class="hide-sm">Trigger </span>Break Now</button>
-      </div>
-
-      <div class="stats-row">
-        <div class="mini"><b id="stKeys">0</b>keystrokes</div>
-        <div class="mini"><b id="stMouse">0</b>mouse events</div>
-        <div class="mini"><b id="stActive">0m</b>active time</div>
-        <div class="mini"><b id="stIdle">—</b>idle</div>
       </div>
     </div>
 
@@ -343,8 +316,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
         <polyline id="sparkLine" fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points=""/>
       </svg>
       <div class="walker-chip" id="walkerChip">◌ no walker connected</div>
-      <div class="demo-row">
-        <button class="btn" id="instantBtn">🏃 Instant Walk (demo)</button>
+      <div class="btn-row">
         <button class="btn" id="cancelBtn">✕ Cancel</button>
       </div>
     </div>
@@ -352,7 +324,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
       <div class="big">✓ CRUNCH BREAK VERIFIED!</div>
       <div class="mana">✨ +100 Mana ✨</div>
       <div class="note" id="successNote">Your body respawns refreshed.<br>The IDE is unlocked — go ship it.</div>
-      <div class="demo-row"><button class="btn primary" id="backBtn">⌨ Back to Coding</button></div>
+      <div class="btn-row"><button class="btn primary" id="backBtn">⌨ Back to Coding</button></div>
     </div>
   </div>
 </div>
@@ -360,7 +332,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 <div id="toast"></div>
 
 <div class="statusbar">
-  <span class="s-cyan">⚔ FitDeveloper v2.4.1</span>
+  <span class="s-cyan">⚔ FitDeveloper v3.2.0</span>
   <span id="sbRelay">relay —</span>
   <span id="sbSession">sessions: 0</span>
   <span class="s-emerald" id="sbState">idle</span>
@@ -383,13 +355,9 @@ let focusMin = 50;
 let remaining = focusMin * 60; // seconds
 let running = false;
 let tick = null;
-let crunch = 0;                // 0..100
-let keys = 0, mouse = 0, activeSec = 0, lastInput = 0;
-let demo = false;
+let crunch = 0;                // 0..100 (mirrored from the IDE engine)
 let session = null;            // {id,target,...}
 let pollTimer = null;
-let demoTimer = null;
-let demoSteps = 0;
 let breakTarget = 200;
 let prevWalker = false;
 let breakStart = 0;
@@ -430,7 +398,7 @@ async function boot() {
       if (r.ok) {
         session = await r.json();
         showBreakUI();
-        toast("⚡ FORCED break — sustained typing detected. Walk it off!", "warn");
+        toast("⚡ Break time — the countdown hit 100%. Walk to unlock the IDE!", "warn");
       }
     }
   } catch {}
@@ -504,27 +472,13 @@ function renderClock() {
     $("crunchMeter").firstElementChild.style.width = crunch + "%";
     $("crunchMeter").className = "meter" + (crunch > 70 ? " hot" : "");
   }
-  $("stKeys").textContent = keys;
-  $("stMouse").textContent = mouse;
-  $("stActive").textContent = Math.floor(activeSec/60) + "m";
-  const idle = lastInput ? Math.floor((Date.now()-lastInput)/1000) : null;
-  $("stIdle").textContent = idle === null ? "—" : (idle > 90 ? idle+"s 😴" : "active");
 }
 function startTick() {
   stopTick();
   tick = setInterval(() => {
     if (mode === "focus") {
       remaining--;
-      const idle = lastInput ? (Date.now()-lastInput)/1000 : 0;
-      if (idle < 120) activeSec++;
       if (remaining <= 0) { stopAll(); triggerBreak(); }
-    } else {
-      if (!window.__CG_PLUGIN__) {
-        const idle = lastInput ? (Date.now()-lastInput)/1000 : 999;
-        if (idle < 3) crunch = Math.min(100, crunch + 0.9);
-        else crunch = Math.max(0, crunch - 1.6);
-        if (crunch >= 100) { stopAll(); triggerBreak(); }
-      }
     }
     renderClock();
   }, 1000);
@@ -536,10 +490,10 @@ $("startBtn").onclick = () => {
   running = !running;
   $("startBtn").textContent = running ? "⏸ Pause" : "▶ Start";
   $("sbState").textContent = running ? (mode === "focus" ? "focusing…" : "watching crunch…") : "paused";
-  if (running) { lastInput = Date.now(); startTick(); } else stopTick();
+  if (running) { startTick(); } else stopTick();
 };
 $("resetBtn").onclick = () => {
-  stopAll(); remaining = focusMin*60; crunch = 0; keys = 0; mouse = 0; activeSec = 0;
+  stopAll(); remaining = focusMin*60; crunch = 0;
   renderClock(); toast("Timer reset", "warn");
 };
 $("mFocus").onclick = () => {
@@ -550,16 +504,12 @@ $("mCrunch").onclick = () => {
   mode = "crunch"; $("mCrunch").classList.add("active"); $("mFocus").classList.remove("active");
   $("focusUI").style.display = "none"; $("crunchUI").style.display = ""; renderClock();
 };
+/* step target presets for the focus-timer break */
 document.querySelectorAll(".preset").forEach(b => b.onclick = () => {
   document.querySelectorAll(".preset").forEach(x => x.classList.remove("active"));
   b.classList.add("active");
   focusMin = parseInt(b.dataset.min, 10); remaining = focusMin*60; renderClock();
 });
-/* activity detection inside this page */
-["keydown"].forEach(e => addEventListener(e, () => { keys++; lastInput = Date.now(); }));
-["mousemove","mousedown","wheel","touchstart"].forEach(e =>
-  addEventListener(e, () => { mouse++; lastInput = Date.now(); }, { passive: true })
-);
 
 /* ================= break countdown strip (driven by the IDE engine) ================= */
 window.__cgEngine = null; /* written by ide-bridge.js: {crunch,secondsToBreak,active,engineOn,rampSeconds,targetSteps,forcedSession} */
@@ -591,25 +541,18 @@ function renderCountdown() {
       const cls = frac > 0.55 ? "safe" : frac > 0.22 ? "warn" : "hot";
       cdSet(cls, e.secondsToBreak, "sec",
             cls === "hot" ? "Almost there — the break fires at crunch 100%!"
-                          : "of continuous typing until the forced break",
+                          : "countdown running — the break fires at crunch 100%",
             "crunch " + crPct + "% · target " + e.targetSteps + " steps", e.crunch / 100);
     } else {
       cdSet("idle", "—", "idle",
-            e.active ? "Meter warming up…" : "Idle — crunch is cooling down",
-            "crunch " + crPct + "% · start typing to arm the countdown", e.crunch / 100);
+            e.active ? "Meter warming up…" : "Countdown paused",
+            "crunch " + crPct + "% · start typing to resume the countdown", e.crunch / 100);
     }
   } else if (Date.now() - cdBootAt > 3500 && Date.now() - cdDataAt > 3500) {
-    if (!window.__CG_PLUGIN__ && mode === "crunch" && running && crunch > 0) {
-      const left = Math.ceil((100 - crunch) / 0.9);
-      cdSet(left <= 20 ? "hot" : left <= 45 ? "warn" : "safe", left, "sec",
-            "of continuous typing until the break (local estimate)",
-            "crunch " + Math.round(crunch) + "%", crunch / 100);
-    } else {
-      cdSet("idle", "—", "wait",
-            window.__CG_PLUGIN__ ? "Reaching the IDE engine…"
-                                 : "Countdown arms when the IDE plugin bridge connects",
-            "waiting for /api/ide-activity", 0);
-    }
+    cdSet("idle", "—", "wait",
+          window.__CG_PLUGIN__ ? "Reaching the IDE engine…"
+                               : "Countdown arms when the IDE plugin bridge connects",
+          "waiting for /api/ide-activity", 0);
   }
   /* plugin mode: the IDE engine is the source of truth — mirror it into the crunch clock */
   if (window.__CG_PLUGIN__ && e && mode === "crunch") {
@@ -622,7 +565,7 @@ function renderCountdown() {
 setInterval(renderCountdown, 500);
 
 /* ================= break flow ================= */
-$("breakNowBtn").onclick = triggerBreak;
+/* (the IDE engine fires breaks automatically — no manual trigger button) */
 
 document.querySelectorAll(".t-preset").forEach(b => b.onclick = () => {
   document.querySelectorAll(".t-preset").forEach(x => x.classList.remove("active"));
@@ -630,6 +573,7 @@ document.querySelectorAll(".t-preset").forEach(b => b.onclick = () => {
   breakTarget = parseInt(b.dataset.steps, 10);
 });
 
+/* called by the focus countdown; the IDE engine adopts the session and pauses */
 async function triggerBreak() {
   if (session) return;
   stopAll();
@@ -646,7 +590,6 @@ async function triggerBreak() {
 /* shared by triggerBreak + forced-break adoption (?s=<id> from the IDE engine) */
 function showBreakUI() {
   breakStart = Date.now();
-  demoSteps = 0;
   const url = walkerBase() + "/walk?s=" + session.id + "&target=" + session.target;
   const httpUrl = "http://" + config.lanIP + ":" + config.port + "/walk?s=" + session.id;
   $("targetTxt").textContent = session.target;
@@ -672,7 +615,6 @@ function showBreakUI() {
   toast("⚡ Break triggered — scan the QR", "warn");
   pollTimer = setInterval(pollSession, 1000);
   pollSession();
-  if (demo || $("demoToggle").checked) startDemoWalk();
 }
 async function pollSession() {
   if (!session) return;
@@ -708,28 +650,7 @@ async function drawSpark(s) {
     $("spark").style.display = "block";
   } catch {}
 }
-async function startDemoWalk() {
-  if (demoTimer || !session) return;
-  toast("🏃 Demo Mode — simulated walker running", "warn");
-  demoTimer = setInterval(async () => {
-    if (!session) return clearInterval(demoTimer), demoTimer = null;
-    demoSteps = Math.min(session.target, demoSteps + 17);
-    try {
-      await fetch("/api/session/" + session.id + "/progress", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ steps: demoSteps, source: "demo", walkerName: "Demo Walker" })
-      });
-    } catch {}
-  }, 280);
-}
-$("demoToggle").onchange = (e) => {
-  demo = e.target.checked;
-  toast(demo ? "Demo Mode ON — breaks auto-complete" : "Demo Mode OFF", "warn");
-  if (demo && session && !$("successUI").style.display.includes("grid") && $("overlay").classList.contains("show")) startDemoWalk();
-};
-$("instantBtn").onclick = () => { if (session) { demoSteps = session.target; } };
 $("cancelBtn").onclick = () => {
-  if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
   if (pollTimer) clearInterval(pollTimer); pollTimer = null; session = null;
   $("overlay").classList.remove("show"); $("sbState").textContent = "idle";
 };
@@ -737,7 +658,6 @@ $("backBtn").onclick = () => { $("overlay").classList.remove("show"); $("sbState
 
 async function verified() {
   if (pollTimer) clearInterval(pollTimer); pollTimer = null;
-  if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
   const walked = session.steps;
   const lvl0 = 1 + Math.floor(hero.mana / 300);
   const durSec = breakStart ? Math.max(1, Math.round((Date.now() - breakStart) / 1000)) : 0;

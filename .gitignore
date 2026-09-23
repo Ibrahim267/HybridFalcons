@@ -30,3 +30,5 @@ node_modules/
 # after a fresh clone. Android walkers work without certs; iOS needs them.
 without-plugin/cert.pem
 without-plugin/key.pem
+# keystore backups - rekey artifacts, never publish key material copies 
+plugin/src/main/resources/cert/*.bak-* 

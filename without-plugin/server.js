@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
- * CrunchGuard Relay Server — zero dependencies (Node built-ins)
+ * FitDeveloper Relay Server — zero dependencies (Node built-ins)
  * Serves the desktop + mobile views and relays step progress.
  * Run:  node server.js          (port 8787)
  * ============================================================ */
@@ -142,7 +142,7 @@ async function handler(req, res) {
   if (p === "/api/health") {
     return sendJSON(res, 200, {
       ok: true,
-      service: "crunchguard",
+      service: "fitdeveloper",
       version: VERSION,
       uptimeSec: Math.floor((Date.now() - STARTED) / 1000),
       sessions: sessions.size,
@@ -229,7 +229,7 @@ setInterval(() => {
 
 server.on("error", (e) => {
   if (e.code === "EADDRINUSE") {
-    console.error(`\n  ⚠ Port ${PORT} is already in use — CrunchGuard is probably already running.`);
+    console.error(`\n  ⚠ Port ${PORT} is already in use — FitDeveloper is probably already running.`);
     console.error(`    Open http://localhost:${PORT}/ in your browser, or run restart_server.bat.`);
     process.exit(1);
   }
@@ -240,7 +240,7 @@ server.listen(PORT, "0.0.0.0", () => {
   const ip = getLanIP();
   console.log("");
   console.log("  ==============================================================");
-  console.log(`   ⚔  CRUNCHGUARD v${VERSION} — walk to unlock your IDE`);
+  console.log(`   ⚔  FITDEVELOPER v${VERSION} — walk to unlock your IDE`);
   console.log("  ==============================================================");
   console.log(`   Desktop : http://localhost:${PORT}/`);
   console.log(`   Phone   : scan the QR shown when a break triggers`);

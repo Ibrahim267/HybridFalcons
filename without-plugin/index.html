@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CrunchGuard — Desktop</title>
+<title>FitDeveloper — Desktop</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg">
 <meta name="theme-color" content="#0b0f14">
@@ -178,7 +178,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 <body>
 
 <div class="topbar">
-  <div class="logo"><span class="shield">⚔</span>Crunch<em>Guard</em></div>
+  <div class="logo"><span class="shield">⚔</span>Fit<em>Developer</em></div>
   <div class="chip ok" id="relayChip"><span class="dot"></span><span id="relayTxt">relay: connecting…</span></div>
   <div class="spacer"></div>
   <button class="chip" id="soundBtn" title="Toggle sounds">🔊 sound</button>
@@ -284,7 +284,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 <div id="toast"></div>
 
 <div class="statusbar">
-  <span class="s-cyan">⚔ CrunchGuard v1.2</span>
+  <span class="s-cyan">⚔ FitDeveloper v1.2</span>
   <span id="sbRelay">relay —</span>
   <span id="sbSession">sessions: 0</span>
   <span class="s-emerald" id="sbState">idle</span>
@@ -295,8 +295,8 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 <script>
 "use strict";
 /* ================= state ================= */
-const LS = "crunchguard_v1";
-const LS_LOG = "crunchguard_log_v1";
+const LS = "fitdeveloper_v1";
+const LS_LOG = "fitdeveloper_log_v1";
 const save = () => localStorage.setItem(LS, JSON.stringify(hero));
 const heroDefault = { mana:0, breaks:0, steps:0, streak:0, last:null, muted:false };
 let hero = Object.assign({}, heroDefault, JSON.parse(localStorage.getItem(LS) || "{}"));

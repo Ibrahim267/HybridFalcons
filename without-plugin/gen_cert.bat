@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================
-rem  CrunchGuard cert generator (Windows)
+rem  FitDeveloper cert generator (Windows)
 rem  Regenerates the self-signed cert used for HTTPS :8788.
 rem  iOS motion sensors need HTTPS; Android works over HTTP.
 rem  Requires openssl - included with Git for Windows.
@@ -15,7 +15,7 @@ if errorlevel 1 (
   exit /b 1
 )
 cd /d "%~dp0"
-openssl req -x509 -newkey rsa:2048 -sha256 -days 365 -nodes -keyout key.pem -out cert.pem -subj "/CN=CrunchGuard"
+openssl req -x509 -newkey rsa:2048 -sha256 -days 365 -nodes -keyout key.pem -out cert.pem -subj "/CN=FitDeveloper"
 echo.
 echo   Done: cert.pem + key.pem generated (365 days, self-signed).
 echo   Restart the server:  restart_server.bat

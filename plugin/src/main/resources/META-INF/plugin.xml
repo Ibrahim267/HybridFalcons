@@ -1,26 +1,56 @@
-<idea-plugin>
+<idea-plugin require-restart="true">
     <id>com.fitdeveloper.plugin</id>
     <name>FitDeveloper</name>
     <vendor>FitDeveloper (42AD x JetBrains hackathon)</vendor>
     <description><![CDATA[
-    <p><b>FitDeveloper — crunch meter for your IDE, walk breaks on demand.</b></p>
-    <p>An always-on engine inside the IDE tracks REAL editor keystrokes and fills
-    the crunch meter while you code. <b>By default it never interrupts you</b>:
-    at 100% crunch it simply shows "BREAK DUE" — no forced breaks, no blocked
-    typing. Start a break yourself with "Force break now" (QR code, your phone
-    counts steps via DeviceMotion pedometer, progress syncs live through the
-    plugin's built-in relay server).</p>
-    <p>Want the classic demo? Tick <b>"Demo: block typing while a break is
-    open"</b> in Settings | Tools | FitDeveloper (or in the tool window):
-    while a break is open the IDE swallows keystrokes until the walk is
-    verified — "Crunch Break Verified! +100 Mana" — and releases automatically
-    the moment the walk completes or the walker goes silent. The switch is
-    OFF by default, so the plugin can never lock you out unexpectedly.</p>
+    <p><b>FitDeveloper — the crunch meter for your IDE with walk-to-unlock breaks.</b></p>
+    <p>While the engine is enabled it fills the crunch meter for you and shows
+    a live break countdown (continuous countdown by default — analysis,
+    reading and thinking count as work too; or the classic only-while-typing
+    mode). <b>When the meter reaches 100% a break starts automatically:</b>
+    the QR screen opens and the IDE pauses typing until you have walked the
+    target step count — your phone counts real steps via the DeviceMotion
+    pedometer and syncs live through the plugin's built-in relay server.
+    Finishing the walk unlocks the IDE ("Crunch Break Verified!"). A break
+    always releases itself: after 15 minutes with no walker, or 5 minutes if
+    the walker goes silent. <b>Disable the engine</b> in Settings | Tools |
+    FitDeveloper and nothing is watched, nothing fires, nothing is ever
+    blocked — the master switch, no uninstall needed.</p>
+    <p><b>New in 3.2.0</b> — the whole project now ships under the
+    <b>FitDeveloper</b> name only: repository folders, build and launch
+    scripts, the browser dashboard, the phone walker pages and the standalone
+    variant were all renamed from the old prototype name — same features,
+    one consistent product name.</p>
+    <p><b>New in 3.1.0</b> — sharpened break flow after real-world testing:
+    the <b>QR code now appears in the tool window only when the countdown
+    actually finishes</b> and the break opens (during the countdown the panel
+    stays a pure status display), the idle "waiting room" QR and its
+    confusing phone page were removed, and every decorative symbol was
+    dropped from the walker page so nothing renders as stray characters on
+    phones. The sync indicator stays hidden until the first live sync.</p>
+    <p><b>New in 3.0.0</b> — a cleaner, resizable UI with the QR in the IDE:
+    the tool window is now a status panel (the engine switch, timer mode and
+    minutes live only in Settings — nothing is duplicated), texts and buttons
+    reflow when the widget is resized, and a <b>live QR for the phone walker
+    sits right in the panel</b> (pure Java, works in every IDE — no browser
+    needed). Scanning it joins the open walk directly (shown only while a
+    break is open — refined in 3.1.0). The default countdown is now the
+    <b>research-backed 30 minutes</b> — a ~5-minute walk for every 30 minutes
+    of sitting (Columbia University, 2023; Harvard Health); existing 1.5-min
+    values from older versions migrate to it once, automatically.</p>
+    <p><b>New in 2.9.0</b> — the browser dashboard is fully productized: the
+    manual "Trigger Break Now" button and the demo-walker simulation were
+    removed (breaks now come from the IDE engine alone), the leftover local
+    activity analysis row is gone, and all dashboard texts/badges were
+    updated to the current product behavior.</p>
+    <p><b>New in 2.8.0</b> — the countdown length is now configured in
+    <b>minutes</b> (fractional, 0.5–120) instead of seconds, and the tool
+    window's big countdown renders as minutes:seconds. Fully automatic
+    walk-to-unlock since 2.7.0; two timer modes since 2.6.0.</p>
     <p>This is the <b>IDE plugin</b> variant of FitDeveloper — it runs in both
     <b>IntelliJ IDEA</b> and <b>Android Studio</b> (any 2024.2+ based IDE).
     The standalone variant (runs in a normal browser with a Node server) lives
-    in the <code>without-plugin</code> folder of the same repository, kept
-    under its original prototype name "CrunchGuard".</p>
+    in the <code>without-plugin</code> folder of the same repository.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -29,6 +59,16 @@
          IDEs without the module (older Android Studio) skip it gracefully —
          the native control panel is used there instead. -->
     <depends optional="true" config-file="plugin-with-jcef.xml">com.intellij.platform.jcef</depends>
+
+    <!-- The coding lock patches the GLOBAL TypedAction pipeline, which the
+         platform does not roll back on hot-unload. require-restart="true"
+         (root attribute) makes install/update/uninstall ask for an IDE
+         restart, so the handler chain can never go stale. This listener is
+         the second line of defense: it unwraps the handler before unload. -->
+    <applicationListeners>
+        <listener class="com.fitdeveloper.plugin.FitDeveloperDynamicHook"
+                  topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+    </applicationListeners>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="FitDeveloper"

@@ -1,6 +1,6 @@
 {
-  "name": "CrunchGuard Walker",
-  "short_name": "CrunchGuard",
+  "name": "FitDeveloper Walker",
+  "short_name": "FitDeveloper",
   "description": "Walk N real steps to unlock your IDE — physical breaks enforced.",
   "start_url": "/walk",
   "display": "standalone",

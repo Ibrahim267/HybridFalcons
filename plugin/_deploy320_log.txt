@@ -1,0 +1,11 @@
+=== FitDeveloper 3.2.0 deploy 09/23/2026 21:26:31 ===
+idea64.exe: C:\Program Files\JetBrains\IntelliJ IDEA 2026.2.3\bin\idea64.exe
+jar classes present: engine=True factory=True lock=True hook=True qr=True
+studio64 was not running
+idea64 was not running
+seeded OK: C:\Users\loq\AppData\Roaming\Google\AndroidStudio2024.3.2\plugins\fitdeveloper-plugin\lib\fitdeveloper-plugin-3.2.0.jar
+seeded OK: C:\Users\loq\AppData\Roaming\JetBrains\IntelliJIdea2026.2\plugins\fitdeveloper-plugin\lib\fitdeveloper-plugin-3.2.0.jar
+desktop zip refreshed
+Android Studio launching with FitDeveloper-IDE-test
+IntelliJ IDEA launching with FitDeveloper-IDE-test
+=== deploy done ===

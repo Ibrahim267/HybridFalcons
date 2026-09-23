@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================
-rem  CrunchGuard launcher - checks Node, starts the server
+rem  FitDeveloper launcher - checks Node, starts the server
 rem  detached (minimized window, logs to server.log), then
 rem  opens the dashboard in the default browser.
 rem ============================================================
@@ -9,7 +9,7 @@ cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
   echo.
-  echo   [CrunchGuard] Node.js is NOT installed on this PC.
+  echo   [FitDeveloper] Node.js is NOT installed on this PC.
   echo   Download the LTS installer from https://nodejs.org ,
   echo   install it, then run this file again.
   echo.
@@ -18,13 +18,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "CrunchGuard" /min cmd /c "node server.js > server.log 2>&1"
+start "FitDeveloper" /min cmd /c "node server.js > server.log 2>&1"
 timeout /t 2 /nobreak >nul
 start "" http://localhost:8787/
 
 echo.
 echo   ============================================================
-echo     CrunchGuard is starting - dashboard opening in browser
+echo     FitDeveloper is starting - dashboard opening in browser
 echo     If the page does not load, wait 2s and refresh.
 echo.
 echo     PHONE SETUP: same Wi-Fi as this PC, then scan the QR

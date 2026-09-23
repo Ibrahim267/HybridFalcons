@@ -1,5 +1,5 @@
 {
-  "name": "crunchguard",
+  "name": "fitdeveloper",
   "version": "1.2.1",
   "description": "Walk N real steps to unlock your IDE - enforced physical breaks for developers. Zero npm dependencies, fully offline.",
   "main": "server.js",

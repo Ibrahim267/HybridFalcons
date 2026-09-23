@@ -1,4 +1,4 @@
-# ⚔ CrunchGuard
+# ⚔ FitDeveloper
 
 **Enforce physical movement breaks for game developers & 3D artists.**
 Desktop IDE view tracks your crunch → triggers a break → shows a QR → you walk N steps with your phone → the IDE unlocks with **+100 Mana**. Built for the 42AD × JetBrains Hackathon — *Help the Developer*.
@@ -8,7 +8,7 @@ Desktop IDE view tracks your crunch → triggers a break → shows a QR → you 
 ## Run on your PC (zero dependencies — only Node.js 18+)
 
 ```cmd
-cd CrunchGuard
+cd FitDeveloper
 start_server.bat        :: Windows - checks Node, starts server, opens the dashboard
 :: or manually:  node server.js
 ```
@@ -16,7 +16,7 @@ start_server.bat        :: Windows - checks Node, starts server, opens the dashb
 **macOS / Linux:**
 
 ```bash
-cd CrunchGuard
+cd FitDeveloper
 bash start_server.sh    # checks Node, starts server (nohup), opens the dashboard
 # or manually:  node server.js
 ```
@@ -30,7 +30,7 @@ The LAN IP is **auto-detected at runtime** (`os.networkInterfaces()` — prefers
 
 ## Send to a friend (2-minute test)
 
-1. Zip the folder (or use `CrunchGuard-v1.2.1.zip` as-is) and send it over.
+1. Zip the folder (or use `FitDeveloper-v1.2.1.zip` as-is) and send it over.
 2. Friend installs Node.js LTS (https://nodejs.org) if missing — both launchers detect and link it.
 3. Friend runs the launcher for their OS (`start_server.bat` / `bash start_server.sh`), phone joins the **same Wi-Fi**, scan the QR, walk.
 4. Full step-by-step with troubleshooting (incl. a Mac section): **FRIEND_QUICKSTART.txt** (inside the zip).
@@ -48,7 +48,7 @@ No npm install, no build step, no internet. Everything runs locally on their mac
 Quick start for the repo:
 
 ```bash
-git init && git add . && git commit -m "CrunchGuard v1.2.1 - walk to unlock your IDE"
+git init && git add . && git commit -m "FitDeveloper v1.2.1 - walk to unlock your IDE"
 git branch -M main && git remote add origin <your-repo-url> && git push -u origin main
 ```
 
@@ -58,15 +58,15 @@ When Windows asks "Allow Node.js on your network?" → **Allow (Private networks
 If the phone cannot connect, double-click **`firewall_fix.bat`** (self-elevates and adds both rules):
 
 ```cmd
-netsh advfirewall firewall add rule name="CrunchGuard HTTP"  dir=in action=allow protocol=TCP localport=8787
-netsh advfirewall firewall add rule name="CrunchGuard HTTPS" dir=in action=allow protocol=TCP localport=8788
+netsh advfirewall firewall add rule name="FitDeveloper HTTP"  dir=in action=allow protocol=TCP localport=8787
+netsh advfirewall firewall add rule name="FitDeveloper HTTPS" dir=in action=allow protocol=TCP localport=8788
 ```
 
 Phone and laptop must be on the **same Wi-Fi**. If venue Wi-Fi blocks devices from seeing each other, use Windows **Mobile Hotspot** (Settings → Network) and reconnect both to it.
 
 ## Stage demo script (60 seconds)
 
-1. Desktop view open, timer running. Say: *"Crunch is killing devs — CrunchGuard makes the body a dependency you can't skip."*
+1. Desktop view open, timer running. Say: *"Crunch is killing devs — FitDeveloper makes the body a dependency you can't skip."*
 2. Click **⚡ Trigger Break Now** → QR overlay appears.
 3. Scan with your phone → tap **Enable Motion Sensor** (iOS asks permission — tap Allow).
 4. Either walk in place / shake gently, **or** flip **DEMO MODE: INSTANT WALK** on the phone (18 steps/sec).
@@ -108,7 +108,7 @@ Desktop view (index.html) polls the session every 1s → green when target met.
 | `gen_cert.sh` / `gen_cert.bat` | Regenerate the self-signed cert after a fresh clone |
 | `start_server.bat` | Windows: Node check → detached start → opens dashboard |
 | `start_server.sh` | macOS/Linux: Node check → nohup start → opens dashboard |
-| `restart_server.bat` | Restarts only CrunchGuard on Windows (never touches other processes) |
+| `restart_server.bat` | Restarts only FitDeveloper on Windows (never touches other processes) |
 | `firewall_fix.bat` | One-click admin firewall rules for 8787/8788 |
 | `FRIEND_QUICKSTART.txt` | The 2-minute guide you send with the zip |
 | `.gitignore` / `LICENSE` | Repo hygiene (private keys out) / MIT license |

@@ -10,7 +10,7 @@ setlocal
 set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 set "GRADLE=C:\Users\loq\.gradle\wrapper\dists\gradle-8.12-all\ejduaidbjup3bmmkhw3rie4zb\gradle-8.12\bin\gradle.bat"
-cd /d "C:\Users\loq\Documents\hackathons\JetBrains\CrunchGuard\plugin"
+cd /d "C:\Users\loq\Documents\hackathons\JetBrains\FitDeveloper\plugin"
 
 echo === FitDeveloper plugin build started %DATE% %TIME% === > build_log.txt
 echo JAVA_HOME=%JAVA_HOME% >> build_log.txt

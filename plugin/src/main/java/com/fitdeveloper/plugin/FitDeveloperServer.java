@@ -47,7 +47,7 @@ import javax.net.ssl.SSLContext;
  */
 public final class FitDeveloperServer {
 
-    public static final String VERSION = "2.4.1-plugin";
+    public static final String VERSION = "3.2.0";
     static final long SESSION_TTL_MS = 2L * 60 * 60 * 1000; // 2h, same as server.js
     static final int MAX_SESSIONS = 500;
     static final int PORT_BASE = 8790;
@@ -172,6 +172,11 @@ public final class FitDeveloperServer {
         return HTTPS_PORT;
     }
 
+    /** Bound HTTP port (the tool window composes LAN URLs with this), or -1. */
+    static int port() {
+        return PORT;
+    }
+
     public static String baseUrl() {
         return "http://localhost:" + Math.max(PORT, PORT_BASE);
     }
@@ -183,7 +188,7 @@ public final class FitDeveloperServer {
      */
     private static void startHttps() {
         try {
-            char[] pass = "crunchguard".toCharArray();
+            char[] pass = "fitdeveloper".toCharArray();
             KeyStore ks = KeyStore.getInstance("PKCS12");
             try (InputStream in = FitDeveloperServer.class.getResourceAsStream("/cert/keystore.p12")) {
                 if (in == null) {
@@ -272,7 +277,9 @@ public final class FitDeveloperServer {
                 boolean engineOn = FitDeveloperSettings.isEnabled();
                 int ramp = Math.max(5, FitDeveloperSettings.rampSeconds());
                 double rate = 100.0 / ramp;
-                boolean counting = typing && engineOn && cr < 100;
+                // 2.6.0: timer mode — continuous counts regardless of typing
+                boolean typingOnly = FitDeveloperSettings.timerTypingOnly();
+                boolean counting = engineOn && cr < 100 && (typingOnly ? typing : true);
                 int toBreak = (int) Math.ceil((100.0 - cr) / rate);
                 sendJSON(ex, 200, "{\"keystrokes\":" + EditorActivityListener.keystrokes()
                         + ",\"lastActivityAgoSec\":" + ago
@@ -280,6 +287,8 @@ public final class FitDeveloperServer {
                         + ",\"crunch\":" + String.format(java.util.Locale.ROOT, "%.1f", cr)
                         + ",\"secondsToBreak\":" + (counting ? String.valueOf(toBreak) : "null")
                         + ",\"engineOn\":" + engineOn
+                        + ",\"timerMode\":\"" + (typingOnly ? "typing" : "continuous") + "\""
+                        + ",\"rampMinutes\":" + String.format(java.util.Locale.ROOT, "%.1f", FitDeveloperSettings.rampMinutes())
                         + ",\"rampSeconds\":" + ramp
                         + ",\"targetSteps\":" + FitDeveloperSettings.targetSteps()
                         + ",\"forcedSession\":" + (fid != null ? esc(fid) : "null")
@@ -726,47 +735,38 @@ public final class FitDeveloperServer {
     }
 
     /**
-     * Injected into the dashboard: feeds REAL IDE editor keystrokes into the
-     * page's activity listeners (synthetic events) and shows a plugin badge.
+     * Injected into the dashboard: polls /api/ide-activity every second and
+     * drives the LIVE break-countdown strip, mirrors engine state into the
+     * status bar/badge, and auto-adopts a forced session via /?s=<id>.
      */
     private static final String IDE_BRIDGE_JS = """
             (function () {
-              if (window.__CG_PLUGIN__) return;
-              window.__CG_PLUGIN__ = true;
-              var last = null;
-              function poke(n) {
-                n = Math.max(1, Math.min(12, n));
-                for (var i = 0; i < n; i++) {
-                  window.dispatchEvent(new KeyboardEvent('keydown'));
-                  window.dispatchEvent(new MouseEvent('mousemove'));
-                }
-              }
+              if (window.__FD_PLUGIN__) return;
+              window.__FD_PLUGIN__ = true;
               function poll() {
                 fetch('/api/ide-activity')
                   .then(function (r) { return r.json(); })
                   .then(function (j) {
-                    if (last !== null && j.keystrokes > last) poke(j.keystrokes - last);
-                    last = j.keystrokes;
-                    window.__cgEngine = j; /* feeds the dashboard break-countdown strip */
+                    window.__fdEngine = j; /* feeds the dashboard break-countdown strip */
                     if (j.forcedSession && location.search.indexOf('s=' + j.forcedSession) === -1) {
                       location.href = '/?s=' + j.forcedSession;
                       return;
                     }
-                    var b = document.getElementById('__cg_badge');
+                    var b = document.getElementById('__fd_badge');
                     if (b) {
-                      var t = 'IDE plugin mode - crunch ' + Math.round(j.crunch) + '%';
-                      if (j.forcedSession) t = 'IDE plugin mode - BREAK OPEN, walk!';
-                      else if (j.secondsToBreak != null) t = 'IDE plugin mode - break in ' + j.secondsToBreak + 's';
-                      else if (j.engineOn === false) t = 'IDE plugin mode - engine paused';
+                      var t = 'FitDeveloper - crunch ' + Math.round(j.crunch) + '%';
+                      if (j.forcedSession) t = 'FitDeveloper - BREAK OPEN, walk!';
+                      else if (j.secondsToBreak != null) t = 'FitDeveloper - break in ' + j.secondsToBreak + 's';
+                      else if (j.engineOn === false) t = 'FitDeveloper - engine paused';
                       b.textContent = t;
                     }
                     var sb = document.getElementById('sbState');
                     var ov = document.getElementById('overlay');
                     if (sb && ov && !ov.classList.contains('show')) {
                       if (j.forcedSession) sb.textContent = 'BREAK OPEN - walk to unlock!';
-                      else if (j.secondsToBreak != null) sb.textContent = 'armed - forced break in ' + j.secondsToBreak + 's';
+                      else if (j.secondsToBreak != null) sb.textContent = 'break in ' + j.secondsToBreak + 's';
                       else if (j.engineOn === false) sb.textContent = 'engine paused';
-                      else sb.textContent = 'watching your typing';
+                      else sb.textContent = 'countdown running';
                     }
                   })
                   .catch(function () {});
@@ -774,8 +774,8 @@ public final class FitDeveloperServer {
               setInterval(poll, 1000);
               document.addEventListener('DOMContentLoaded', function () {
                 var b = document.createElement('div');
-                b.id = '__cg_badge';
-                b.textContent = 'IDE plugin mode - crunch 0%';
+                b.id = '__fd_badge';
+                b.textContent = 'FitDeveloper - crunch 0%';
                 b.style.cssText = 'position:fixed;bottom:6px;right:8px;z-index:9999;font:10px monospace;color:#22d3ee;background:#0b0f14;border:1px solid #1e2630;border-radius:99px;padding:3px 10px;opacity:.85;pointer-events:none';
                 document.body.appendChild(b);
               });

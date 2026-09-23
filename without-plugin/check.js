@@ -1,4 +1,4 @@
-// CrunchGuard health checker — both HTTP (8787) and HTTPS (8788)
+// FitDeveloper health checker — both HTTP (8787) and HTTPS (8788)
 async function probe(url) {
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(4000) });

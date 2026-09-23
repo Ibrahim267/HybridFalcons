@@ -1,7 +1,7 @@
-=== FitDeveloper 2.5.0 deploy 09/23/2026 13:32:14 ===
+=== FitDeveloper 2.5.0 deploy 09/23/2026 17:49:21 ===
 idea64.exe: C:\Program Files\JetBrains\IntelliJ IDEA 2026.2.3\bin\idea64.exe
 jar classes present: engine=True factory=True lock=True
-studio64 closed
+studio64 was not running
 idea64 was not running
 seeded OK: C:\Users\loq\AppData\Roaming\Google\AndroidStudio2024.3.2\plugins\fitdeveloper-plugin\lib\fitdeveloper-plugin-2.5.0.jar
 seeded OK: C:\Users\loq\AppData\Roaming\JetBrains\IntelliJIdea2026.2\plugins\fitdeveloper-plugin\lib\fitdeveloper-plugin-2.5.0.jar

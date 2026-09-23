@@ -35,8 +35,10 @@ public final class BreakNotifier {
                     }
                 }
                 notify("Crunch break triggered",
-                        "Sustained typing detected — the IDE is forcing a break. Target: "
-                                + target + " steps. The QR screen just opened in your browser.",
+                        "The crunch meter hit 100% — a walk break is open. Target: "
+                                + target + " steps. Scan the QR in the FitDeveloper tool window "
+                                + "(the dashboard also opened in your browser). Typing is locked "
+                                + "until the walk is verified.",
                         project);
             } catch (Throwable ignored) {
             }
@@ -60,7 +62,7 @@ public final class BreakNotifier {
             try {
                 notify("Walk to unlock the IDE",
                         remainingSteps + " more steps and typing works again. "
-                                + "The break screen with the QR is in your browser.",
+                                + "Scan the QR in the FitDeveloper tool window and keep walking.",
                         firstProject());
             } catch (Throwable ignored) {
             }

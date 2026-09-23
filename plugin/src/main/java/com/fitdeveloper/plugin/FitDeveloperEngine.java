@@ -7,30 +7,34 @@ import java.net.URI;
  * The crunch-meter engine that lives inside the IDE — now non-intrusive by
  * default.
  *
- * Runs a 1-second tick forever (daemon thread, started with the relay):
- *  - samples REAL editor keystroke activity ({@link EditorActivityListener})
- *  - same math as the dashboard page: sustained typing (idle < 3 s) fills the
- *    crunch meter +0.9/s, idle decays it -1.6/s
- *  - at 100% the engine does NOTHING unless the demo switch is ON: with the
- *    switch off (the default) the meter simply sits at 100% and the tool
- *    window shows "BREAK DUE" — nothing is forced, nothing is blocked.
- *  - with the demo switch ON (Settings | Tools | FitDeveloper, or the tool
- *    window checkbox) 100% forces the break: session created inside the
- *    relay, balloon pops, tool window activates AND the QR screen opens in
- *    the default browser. While that break is open the coding lock (demo
- *    only) swallows keystrokes until the walk is verified.
+ * Runs a 1-second tick forever (daemon thread, started with the relay).
+ * The meter is driven by the TIMER MODE chosen in Settings | Tools |
+ * FitDeveloper (new in 2.6.0):
+ *  - "continuous" (the DEFAULT) — pure countdown: the crunch meter fills
+ *    +100/ramp every second you spend at the machine, whether you type or
+ *    not (analysis/reading/thinking counts as work). There is no decay; the
+ *    countdown restarts after each break or when the engine is re-enabled.
+ *  - "typing" — the classic mode: sustained typing (idle < 3 s) fills the
+ *    meter +100/rampSeconds per second, idle decays it -1.6/s. Stop typing
+ *    and the countdown pauses/cools down.
  *
- * Break resolution (so nobody gets stuck locked out during a demo):
+ *  - at 100% the break fires AUTOMATICALLY (the engine's enable switch in
+ *    Settings | Tools | FitDeveloper is the single master control): session
+ *    created inside the relay, balloon pops, tool window activates with the
+ *    QR ready in the Status panel AND the dashboard opens in the default
+ *    browser. While that break is open the coding lock swallows keystrokes
+ *    until the walk is verified.
+ *
+ * Break resolution (so nobody gets stuck locked out):
  *  - verified: walker reached the step target
  *  - abandoned: nobody ever connected a walker within 15 min
  *  - stale: a walker WAS connected but has posted nothing for 5 min
  *    (phone closed, walked away) — the IDE releases itself
  *
- * All timing/target values and both switches come live from
+ * All timing/target values and the engine switch come live from
  * {@link FitDeveloperSettings} (Settings | Tools | FitDeveloper) — no restart
- * needed. The tool window's "Force break now" button calls
- * {@link #forceBreakNow()} for an instant manual/demo break (it opens the QR
- * screen but never blocks typing unless the demo switch is on).
+ * needed. Breaks are never started manually anywhere in the UI: the engine
+ * alone decides when 100% is reached (product rule since 2.9.0).
  */
 public final class FitDeveloperEngine {
 
@@ -54,7 +58,10 @@ public final class FitDeveloperEngine {
         Thread t = new Thread(FitDeveloperEngine::loop, "fitdeveloper-engine");
         t.setDaemon(true);
         t.start();
-        System.out.println("[FitDeveloper] engine running — watching editor keystrokes (non-intrusive by default)");
+        System.out.println("[FitDeveloper] engine running — timer mode: " + FitDeveloperSettings.timerModeName()
+                + (FitDeveloperSettings.timerTypingOnly()
+                        ? " (counts only while typing)"
+                        : " (continuous countdown, typing not required)"));
     }
 
     /** Current IDE-side crunch level 0..100 (exposed on /api/ide-activity). */
@@ -69,7 +76,8 @@ public final class FitDeveloperEngine {
 
     /**
      * True while a break is open — engine-forced, or a fresh dashboard one.
-     * The coding lock consults this ONLY when the demo switch is on.
+     * The coding lock consults this (together with the engine enable switch)
+     * at every keystroke.
      */
     static boolean breakActive() {
         if (forcedSessionId != null) {
@@ -139,18 +147,27 @@ public final class FitDeveloperEngine {
             return;
         }
 
-        // 3) same math as the dashboard page tick, ramp time from settings
-        long ago = EditorActivityListener.lastActivityAgoSec();
-        if (ago >= 0 && ago < 3) {
-            crunch = Math.min(100, crunch + 100.0 / Math.max(5, FitDeveloperSettings.rampSeconds()));
+        // 3) timer-mode math (2.6.0): continuous counts every second at the
+        //    machine; typing-only keeps the dashboard's keystroke math.
+        double rate = 100.0 / Math.max(5, FitDeveloperSettings.rampSeconds());
+        if (FitDeveloperSettings.timerTypingOnly()) {
+            long ago = EditorActivityListener.lastActivityAgoSec();
+            if (ago >= 0 && ago < 3) {
+                crunch = Math.min(100, crunch + rate);
+            } else {
+                crunch = Math.max(0, crunch - 1.6);
+            }
         } else {
-            crunch = Math.max(0, crunch - 1.6);
+            // continuous: thinking, reading and analyzing all count — the
+            // countdown only pauses while a break is open (handled above)
+            crunch = Math.min(100, crunch + rate);
         }
 
-        // 4) crunch full -> only force a break when the DEMO switch is on.
-        //    Default: nothing happens, nothing is ever blocked — the tool
-        //    window just shows "BREAK DUE" until the meter decays again.
-        if (crunch >= 100 && FitDeveloperSettings.blockTypingEnabled()) {
+        // 4) crunch full -> the break fires AUTOMATICALLY (the engine is on,
+        //    that is the whole point of the countdown): the QR screen opens
+        //    and typing is locked until the walk is verified or the break
+        //    auto-releases (15 min no walker / 5 min silent walker).
+        if (crunch >= 100) {
             forceBreak();
         }
     }
@@ -163,8 +180,8 @@ public final class FitDeveloperEngine {
             return; // raced with a dashboard session — it will pause us next tick
         }
         forcedSessionId = id;
-        System.out.println("[FitDeveloper] DEMO break " + id
-                + " — target " + target + " steps (demo switch is on)");
+        System.out.println("[FitDeveloper] auto break " + id
+                + " — target " + target + " steps (typing locked until the walk is verified)");
         BreakNotifier.breakStarted(id, target);
         openBreakScreen(id);
     }
@@ -173,24 +190,6 @@ public final class FitDeveloperEngine {
     static void openBreakScreen(String id) {
         try {
             Desktop.getDesktop().browse(new URI(FitDeveloperServer.baseUrl() + "/?s=" + id));
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /**
-     * Manual entry point (tool window button): starts a break immediately.
-     * If a break is already open, just re-opens its QR screen. Typing is
-     * blocked during it ONLY if the demo switch is on — otherwise this is a
-     * harmless step-counting demo.
-     */
-    static void forceBreakNow() {
-        try {
-            FitDeveloperServer.Session open = FitDeveloperServer.openSession(OPEN_SESSION_GRACE_MS);
-            if (open != null) {
-                openBreakScreen(open.id);
-                return;
-            }
-            forceBreak();
         } catch (Throwable ignored) {
         }
     }
