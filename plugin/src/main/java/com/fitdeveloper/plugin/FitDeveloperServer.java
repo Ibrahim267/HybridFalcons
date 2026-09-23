@@ -47,7 +47,7 @@ import javax.net.ssl.SSLContext;
  */
 public final class FitDeveloperServer {
 
-    public static final String VERSION = "3.2.0";
+    public static final String VERSION = "3.4.1";
     static final long SESSION_TTL_MS = 2L * 60 * 60 * 1000; // 2h, same as server.js
     static final int MAX_SESSIONS = 500;
     static final int PORT_BASE = 8790;
@@ -89,7 +89,6 @@ public final class FitDeveloperServer {
     private static final long STARTED = System.currentTimeMillis();
     private static final Set<String> COMPLETION_NOTIFIED = ConcurrentHashMap.newKeySet();
 
-    private static final Pattern P_TARGET = Pattern.compile("\"target\"\\s*:\\s*(-?[0-9]+)");
     private static final Pattern P_STEPS = Pattern.compile("\"steps\"\\s*:\\s*(-?[0-9]+)");
     private static final Pattern P_SOURCE = Pattern.compile("\"source\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
     private static final Pattern P_WALKER = Pattern.compile("\"walkerName\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
@@ -288,6 +287,7 @@ public final class FitDeveloperServer {
                         + ",\"secondsToBreak\":" + (counting ? String.valueOf(toBreak) : "null")
                         + ",\"engineOn\":" + engineOn
                         + ",\"timerMode\":\"" + (typingOnly ? "typing" : "continuous") + "\""
+                        + ",\"breakScreen\":\"" + FitDeveloperSettings.breakScreenMode() + "\""
                         + ",\"rampMinutes\":" + String.format(java.util.Locale.ROOT, "%.1f", FitDeveloperSettings.rampMinutes())
                         + ",\"rampSeconds\":" + ramp
                         + ",\"targetSteps\":" + FitDeveloperSettings.targetSteps()
@@ -296,12 +296,11 @@ public final class FitDeveloperServer {
                 return;
             }
             if ("/api/session".equals(path) && "POST".equals(method)) {
-                String body = readBody(ex);
-                int target = 200;
-                Matcher m = P_TARGET.matcher(body);
-                if (m.find()) {
-                    target = clamp(parse(m.group(1), 200), 10, 5000);
-                }
+                readBody(ex); // 3.4.0: any body (e.g. the old {"target":N}) is read and IGNORED
+                // 3.4.0: the steps target is a SETTING — configured only in
+                // Settings | Tools | FitDeveloper. The browser can no longer
+                // supply its own target; every break uses the configured value.
+                int target = FitDeveloperSettings.targetSteps();
                 Session dup = openSession(10 * 60 * 1000L);
                 if (dup != null) {
                     // a break is already running (engine-forced or another tab) — adopt it

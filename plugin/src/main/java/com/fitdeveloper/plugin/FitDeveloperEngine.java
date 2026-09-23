@@ -20,10 +20,11 @@ import java.net.URI;
  *
  *  - at 100% the break fires AUTOMATICALLY (the engine's enable switch in
  *    Settings | Tools | FitDeveloper is the single master control): session
- *    created inside the relay, balloon pops, tool window activates with the
- *    QR ready in the Status panel AND the dashboard opens in the default
- *    browser. While that break is open the coding lock swallows keystrokes
- *    until the walk is verified.
+ *    created inside the relay, balloon pops, the tool window activates and
+ *    the phone scan surface appears — WHERE it appears is the Break scan
+ *    screen setting (3.3.0): the QR in the Status panel, the dashboard in
+ *    the default browser, or both at once (the default). While that break
+ *    is open the coding lock swallows keystrokes until the walk is verified.
  *
  * Break resolution (so nobody gets stuck locked out):
  *  - verified: walker reached the step target
@@ -186,8 +187,17 @@ public final class FitDeveloperEngine {
         openBreakScreen(id);
     }
 
-    /** Opens the dashboard at /?s=<id> — the page adopts the session and shows the QR. */
+    /**
+     * Opens the dashboard at /?s=<id> — the page adopts the session and shows
+     * the QR. Skipped entirely when the Break scan screen setting (3.3.0) is
+     * "Plugin only": the QR stays inside the IDE and no browser window ever
+     * pops up. "Both" (default) and "Browser only" still open it.
+     */
     static void openBreakScreen(String id) {
+        if (!FitDeveloperSettings.openBrowserOnBreak()) {
+            System.out.println("[FitDeveloper] break screen mode 'plugin only' — keeping the scan QR inside the IDE");
+            return;
+        }
         try {
             Desktop.getDesktop().browse(new URI(FitDeveloperServer.baseUrl() + "/?s=" + id));
         } catch (Throwable ignored) {

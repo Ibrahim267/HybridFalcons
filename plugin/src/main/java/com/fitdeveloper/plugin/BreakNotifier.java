@@ -34,10 +34,23 @@ public final class BreakNotifier {
                         tw.activate(() -> { });
                     }
                 }
+                // 3.3.0: the scan-surface wording follows the Break scan
+                // screen setting (Settings | Tools | FitDeveloper)
+                boolean qrInIde = FitDeveloperSettings.showQrInToolWindow();
+                boolean browserToo = FitDeveloperSettings.openBrowserOnBreak();
+                String where;
+                if (qrInIde && browserToo) {
+                    where = "Scan the QR in the FitDeveloper tool window "
+                            + "(the dashboard also opened in your browser). ";
+                } else if (browserToo) {
+                    where = "The walk dashboard just opened in your default "
+                            + "browser \u2014 scan the QR there. ";
+                } else {
+                    where = "Scan the QR in the FitDeveloper tool window. ";
+                }
                 notify("Crunch break triggered",
                         "The crunch meter hit 100% — a walk break is open. Target: "
-                                + target + " steps. Scan the QR in the FitDeveloper tool window "
-                                + "(the dashboard also opened in your browser). Typing is locked "
+                                + target + " steps. " + where + "Typing is locked "
                                 + "until the walk is verified.",
                         project);
             } catch (Throwable ignored) {
@@ -60,9 +73,12 @@ public final class BreakNotifier {
     public static void walkReminder(final int remainingSteps) {
         ApplicationManager.getApplication().invokeLater(() -> {
             try {
+                // 3.3.0: point at whichever scan surface the setting picked
+                String where = FitDeveloperSettings.showQrInToolWindow()
+                        ? "Scan the QR in the FitDeveloper tool window and keep walking."
+                        : "The walk dashboard is open in your browser \u2014 keep walking.";
                 notify("Walk to unlock the IDE",
-                        remainingSteps + " more steps and typing works again. "
-                                + "Scan the QR in the FitDeveloper tool window and keep walking.",
+                        remainingSteps + " more steps and typing works again. " + where,
                         firstProject());
             } catch (Throwable ignored) {
             }

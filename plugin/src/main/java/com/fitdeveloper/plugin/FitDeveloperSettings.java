@@ -35,6 +35,13 @@ import java.awt.Insets;
  *        you type (idle &lt; 3 s counts as typing) and decays when you stop.
  *  - freely choose the "minutes until break" ramp (fractional minutes
  *    allowed; default 30) and the steps target
+ *  - choose the BREAK SCAN SCREEN (new in 3.3.0) — where the phone scan
+ *    surface appears the moment a break opens: "Both" (the DEFAULT — the
+ *    classic behavior: the QR in the tool window AND the dashboard opening
+ *    in the default browser at the same time), "Plugin only" (scan the QR
+ *    right inside the IDE, no browser window ever pops up) or "Browser
+ *    only" (the dashboard opens in the browser, the tool window stays a
+ *    pure status display with no QR)
  *
  * The 30-minute default follows the best-current evidence on breaking up
  * sedentary work: a ~5-minute light walk for every 30 minutes of sitting
@@ -56,6 +63,8 @@ public final class FitDeveloperSettings implements Configurable {
     private static final String KEY_RAMP_UPGRADED = "fitdeveloper.rampMinutes.upgradedTo30";
     private static final String KEY_TARGET = "fitdeveloper.targetSteps";
     private static final String KEY_TIMER_MODE = "fitdeveloper.timerMode";
+    /** Where the phone scan surface appears when a break opens (3.3.0). */
+    private static final String KEY_BREAK_SCREEN = "fitdeveloper.breakScreen";
 
     /** Research-backed default (see class javadoc): 30 min at the machine, then a walk. */
     static final double DEFAULT_RAMP_MINUTES = 30.0;
@@ -63,6 +72,11 @@ public final class FitDeveloperSettings implements Configurable {
     /** Combo labels — the same two strings are used in the tool window. */
     static final String MODE_CONTINUOUS_LABEL = "Continuous countdown (default) \u2014 counts even when you are not typing";
     static final String MODE_TYPING_LABEL = "Only while typing \u2014 countdown pauses when you stop";
+
+    /** Break scan screen labels — one per mode of {@link #breakScreenMode()}. */
+    static final String SCREEN_BOTH_LABEL = "Both (default) \u2014 QR in the plugin AND the dashboard opens in your browser";
+    static final String SCREEN_PLUGIN_LABEL = "Plugin only \u2014 scan the QR in the tool window, no browser window opens";
+    static final String SCREEN_BROWSER_LABEL = "Browser only \u2014 the dashboard opens in your browser, no QR in the tool window";
 
     // ---------------- live values used by the engine ----------------
 
@@ -90,6 +104,38 @@ public final class FitDeveloperSettings implements Configurable {
     /** "continuous" (default) or "typing" — for logs and /api/ide-activity. */
     static String timerModeName() {
         return timerTypingOnly() ? "typing" : "continuous";
+    }
+
+    /**
+     * Where the phone scan surface appears when a break opens (3.3.0).
+     * "both" (the DEFAULT) keeps the classic behavior: the QR appears in
+     * the FitDeveloper tool window AND the dashboard opens in the default
+     * browser at the same moment. "plugin" shows ONLY the in-IDE QR — the
+     * browser never opens. "browser" opens ONLY the dashboard — the tool
+     * window stays a pure status display. Any unknown stored value falls
+     * back to "both", so an old or corrupted value can never leave the
+     * user without ANY scan surface.
+     */
+    static String breakScreenMode() {
+        try {
+            String v = PropertiesComponent.getInstance().getValue(KEY_BREAK_SCREEN);
+            if ("plugin".equals(v) || "browser".equals(v)) {
+                return v;
+            }
+        } catch (Throwable t) {
+            // fall through to the default
+        }
+        return "both";
+    }
+
+    /** True when a break should open the dashboard in the default browser. */
+    static boolean openBrowserOnBreak() {
+        return !"plugin".equals(breakScreenMode());
+    }
+
+    /** True when the QR should appear in the FitDeveloper tool window. */
+    static boolean showQrInToolWindow() {
+        return !"browser".equals(breakScreenMode());
     }
 
     /**
@@ -167,12 +213,24 @@ public final class FitDeveloperSettings implements Configurable {
 
     private JCheckBox enabledBox;
     private JComboBox<String> modeCombo;
+    private JComboBox<String> screenCombo;
     private JSpinner rampSpin;
     private JSpinner targetSpin;
 
     /** Maps the stored key to the combo label. */
     private static String labelFor(boolean typingOnly) {
         return typingOnly ? MODE_TYPING_LABEL : MODE_CONTINUOUS_LABEL;
+    }
+
+    /** Maps the stored break-screen mode to the combo label. */
+    private static String screenLabelFor(String mode) {
+        if ("plugin".equals(mode)) {
+            return SCREEN_PLUGIN_LABEL;
+        }
+        if ("browser".equals(mode)) {
+            return SCREEN_BROWSER_LABEL;
+        }
+        return SCREEN_BOTH_LABEL;
     }
 
     @Override
@@ -188,6 +246,9 @@ public final class FitDeveloperSettings implements Configurable {
         modeCombo = new JComboBox<>(new String[]{MODE_CONTINUOUS_LABEL, MODE_TYPING_LABEL});
         modeCombo.setSelectedItem(labelFor(timerTypingOnly()));
 
+        screenCombo = new JComboBox<>(new String[]{SCREEN_BOTH_LABEL, SCREEN_PLUGIN_LABEL, SCREEN_BROWSER_LABEL});
+        screenCombo.setSelectedItem(screenLabelFor(breakScreenMode()));
+
         rampSpin = new JSpinner(new SpinnerNumberModel(rampMinutes(), 1.0, 120.0, 0.5));
         targetSpin = new JSpinner(new SpinnerNumberModel(targetSteps(), 10, 5000, 1));
         JSpinner.DefaultEditor rampEd = new JSpinner.NumberEditor(rampSpin, "0.#");
@@ -195,9 +256,10 @@ public final class FitDeveloperSettings implements Configurable {
         JSpinner.DefaultEditor targetEd = new JSpinner.NumberEditor(targetSpin, "#");
         targetSpin.setEditor(targetEd);
 
-        JButton defaults = new JButton("Reset to defaults (continuous / 30 min / 200 steps)");
+        JButton defaults = new JButton("Reset to defaults (continuous / 30 min / 200 steps / both screens)");
         defaults.addActionListener(e -> {
             modeCombo.setSelectedItem(MODE_CONTINUOUS_LABEL);
+            screenCombo.setSelectedItem(SCREEN_BOTH_LABEL);
             rampSpin.setValue(DEFAULT_RAMP_MINUTES);
             targetSpin.setValue(200);
         });
@@ -212,6 +274,10 @@ public final class FitDeveloperSettings implements Configurable {
                         + "A break also releases itself (15 min with no walker, 5 min if the walker goes "
                         + "silent). With the engine OFF nothing is watched and nothing is ever blocked. "
                         + "Every value applies the moment you press Apply.\n\n"
+                        + "Break scan screen: choose where the phone scan surface appears when a break "
+                        + "opens — Both (the QR in the plugin AND the dashboard in your browser), "
+                        + "Plugin only (no browser window ever opens) or Browser only (no QR in the "
+                        + "tool window).\n\n"
                         + "Why 30 minutes: research recommends a ~5-minute light walk for every 30 "
                         + "minutes of sitting (Columbia University, 2023; Harvard Health) — the "
                         + "recommended default below automates exactly that.");
@@ -247,6 +313,16 @@ public final class FitDeveloperSettings implements Configurable {
         c.weightx = 0;
         c.fill = GridBagConstraints.NONE;
         c.gridy = 2;
+        p.add(new JLabel("Break scan screen:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        p.add(screenCombo, c);
+
+        c.gridx = 0;
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        c.gridy = 3;
         p.add(new JLabel("Minutes until the walk break (recommended 30):"), c);
         c.gridx = 1;
         c.weightx = 1;
@@ -256,17 +332,17 @@ public final class FitDeveloperSettings implements Configurable {
 
         c.gridx = 0;
         c.weightx = 0;
-        c.gridy = 3;
+        c.gridy = 4;
         p.add(new JLabel("Steps required to verify the break (QR target):"), c);
         c.gridx = 1;
         c.weightx = 1;
         p.add(targetSpin, c);
 
         c.gridx = 0;
-        c.gridy = 4;
+        c.gridy = 5;
         p.add(defaults, c);
 
-        c.gridy = 5;
+        c.gridy = 6;
         c.weightx = 1;
         c.fill = GridBagConstraints.HORIZONTAL;
         c.insets = new Insets(12, 4, 4, 4);
@@ -282,6 +358,7 @@ public final class FitDeveloperSettings implements Configurable {
         }
         return enabledBox.isSelected() != isEnabled()
                 || !labelFor(timerTypingOnly()).equals(modeCombo.getSelectedItem())
+                || !screenLabelFor(breakScreenMode()).equals(screenCombo.getSelectedItem())
                 || (Double) rampSpin.getValue() != rampMinutes()
                 || (Integer) targetSpin.getValue() != targetSteps();
     }
@@ -292,12 +369,16 @@ public final class FitDeveloperSettings implements Configurable {
             return;
         }
         boolean typingOnly = MODE_TYPING_LABEL.equals(modeCombo.getSelectedItem());
+        String screen = SCREEN_PLUGIN_LABEL.equals(screenCombo.getSelectedItem()) ? "plugin"
+                : SCREEN_BROWSER_LABEL.equals(screenCombo.getSelectedItem()) ? "browser" : "both";
         PropertiesComponent.getInstance().setValue(KEY_ENABLED, String.valueOf(enabledBox.isSelected()));
         PropertiesComponent.getInstance().setValue(KEY_TIMER_MODE, typingOnly ? "typing" : "continuous");
+        PropertiesComponent.getInstance().setValue(KEY_BREAK_SCREEN, screen);
         PropertiesComponent.getInstance().setValue(KEY_RAMP_MIN, String.valueOf((Double) rampSpin.getValue()));
         PropertiesComponent.getInstance().setValue(KEY_TARGET, String.valueOf((Integer) targetSpin.getValue()));
         System.out.println("[FitDeveloper] settings applied: enabled=" + enabledBox.isSelected()
                 + ", timerMode=" + (typingOnly ? "typing" : "continuous")
+                + ", breakScreen=" + screen
                 + ", ramp=" + rampMinutes() + " min, target=" + targetSteps() + " steps");
     }
 
@@ -308,6 +389,7 @@ public final class FitDeveloperSettings implements Configurable {
         }
         enabledBox.setSelected(isEnabled());
         modeCombo.setSelectedItem(labelFor(timerTypingOnly()));
+        screenCombo.setSelectedItem(screenLabelFor(breakScreenMode()));
         rampSpin.setValue(rampMinutes());
         targetSpin.setValue(targetSteps());
     }
@@ -316,6 +398,7 @@ public final class FitDeveloperSettings implements Configurable {
     public void disposeUIResources() {
         enabledBox = null;
         modeCombo = null;
+        screenCombo = null;
         rampSpin = null;
         targetSpin = null;
     }

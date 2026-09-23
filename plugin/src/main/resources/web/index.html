@@ -90,6 +90,12 @@ body{
   color:var(--dim);font-family:inherit;font-size:12px;cursor:pointer;
 }
 .preset.active{color:var(--emerald);border-color:rgba(52,211,153,.4)}
+/* 3.4.0: settings-only config note (replaces the step/time preset buttons) */
+.cfg-note{
+  font-size:11px;color:var(--dim);text-align:center;line-height:1.7;
+  border:1px dashed var(--border);border-radius:9px;padding:9px 12px;margin:2px 0 14px;
+}
+.cfg-note b{color:var(--cyan)}
 .controls{display:flex;gap:10px;justify-content:center;flex-wrap:nowrap}
 .controls .btn{flex:1 1 0;min-width:0;padding:11px 10px;white-space:nowrap;text-align:center}
 .btn{
@@ -183,7 +189,8 @@ body{
 .pbar{height:14px;background:#0a0e13;border:1px solid var(--border);border-radius:99px;overflow:hidden;margin:6px 0 4px}
 .pbar > div{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--emerald));transition:width .45s;border-radius:99px}
 .pbar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-bottom:16px}
-.pbar-label b{color:var(--emerald);font-variant-numeric:tabular-nums}
+/* 3.4.0: the moving step counter — bright near-white, high contrast (was emerald/teal, hard on the eyes) */
+.pbar-label b{color:#eaf0f6;font-variant-numeric:tabular-nums}
 .walker-chip{font-size:11px;color:var(--dim);margin-bottom:14px}
 .walker-chip.on{color:var(--emerald)}
 .btn-row{display:flex;gap:10px;justify-content:center}
@@ -259,11 +266,6 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
       <div id="focusUI">
         <div class="clock" id="clock">50:00</div>
         <div class="crunch-label" id="focusLabel">focus session — break triggers at 00:00</div>
-        <div class="presets">
-          <button class="preset" data-min="25">25m</button>
-          <button class="preset active" data-min="50">50m</button>
-          <button class="preset" data-min="90">90m</button>
-        </div>
       </div>
 
       <div id="crunchUI" style="display:none">
@@ -272,11 +274,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
         <div class="meter" id="crunchMeter"><div></div></div>
       </div>
 
-      <div class="presets" id="targetPresets">
-        <button class="preset t-preset" data-steps="100">100 steps</button>
-        <button class="preset t-preset active" data-steps="200">200 steps</button>
-        <button class="preset t-preset" data-steps="500">500 steps</button>
-      </div>
+      <div class="cfg-note">Steps target &amp; break timing are set in the IDE only — <b>Settings | Tools | FitDeveloper</b>.<br>This page is a live status display; every break uses the configured values.</div>
 
       <div class="controls">
         <button class="btn primary" id="startBtn">▶ Start</button>
@@ -332,7 +330,7 @@ button.chip{background:none;font-family:inherit;cursor:pointer}
 <div id="toast"></div>
 
 <div class="statusbar">
-  <span class="s-cyan">⚔ FitDeveloper v3.2.0</span>
+  <span class="s-cyan" id="sbVer">⚔ FitDeveloper v3.4.1</span>
   <span id="sbRelay">relay —</span>
   <span id="sbSession">sessions: 0</span>
   <span class="s-emerald" id="sbState">idle</span>
@@ -358,7 +356,8 @@ let tick = null;
 let crunch = 0;                // 0..100 (mirrored from the IDE engine)
 let session = null;            // {id,target,...}
 let pollTimer = null;
-let breakTarget = 200;
+/* 3.4.0: no breakTarget here anymore — the steps target is a SETTING
+   (Settings | Tools | FitDeveloper); the relay applies it server-side. */
 let prevWalker = false;
 let breakStart = 0;
 let config = { lanIP: "127.0.0.1", port: 8787, httpsPort: null };
@@ -386,7 +385,7 @@ async function boot() {
   renderHistory();
   renderSound();
   /* plugin mode: the IDE engine drives the crunch — open that view by default */
-  if (window.__CG_PLUGIN__) {
+  if (window.__FD_PLUGIN__) {
     try { $("mCrunch").click(); } catch (err) {}
   }
   setInterval(pollSessions, 4000);
@@ -467,7 +466,7 @@ function renderClock() {
     c.textContent = m + ":" + s;
     c.className = "clock" + (running ? " running" : "") + (remaining <= 300 && running ? " warn" : "");
   } else {
-    if (window.__CG_PLUGIN__ && window.__cgEngine) crunch = window.__cgEngine.crunch;
+    if (window.__FD_PLUGIN__ && window.__fdEngine) crunch = window.__fdEngine.crunch;
     $("crunchClock").textContent = Math.round(crunch) + "%";
     $("crunchMeter").firstElementChild.style.width = crunch + "%";
     $("crunchMeter").className = "meter" + (crunch > 70 ? " hot" : "");
@@ -504,15 +503,9 @@ $("mCrunch").onclick = () => {
   mode = "crunch"; $("mCrunch").classList.add("active"); $("mFocus").classList.remove("active");
   $("focusUI").style.display = "none"; $("crunchUI").style.display = ""; renderClock();
 };
-/* step target presets for the focus-timer break */
-document.querySelectorAll(".preset").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".preset").forEach(x => x.classList.remove("active"));
-  b.classList.add("active");
-  focusMin = parseInt(b.dataset.min, 10); remaining = focusMin*60; renderClock();
-});
 
 /* ================= break countdown strip (driven by the IDE engine) ================= */
-window.__cgEngine = null; /* written by ide-bridge.js: {crunch,secondsToBreak,active,engineOn,rampSeconds,targetSteps,forcedSession} */
+window.__fdEngine = null; /* written by ide-bridge.js: {crunch,secondsToBreak,active,engineOn,rampSeconds,targetSteps,forcedSession} */
 const CD_C = 326.73;       /* countdown ring circumference (r = 52) */
 let cdDataAt = 0;
 const cdBootAt = Date.now();
@@ -526,7 +519,7 @@ function cdSet(cls, num, unit, status, meta, frac) {
   $("cdArc").style.strokeDashoffset = (CD_C * (1 - f)).toFixed(1);
 }
 function renderCountdown() {
-  const e = window.__cgEngine;
+  const e = window.__fdEngine;
   if (e) {
     cdDataAt = Date.now();
     const crPct = Math.round(e.crunch);
@@ -550,12 +543,12 @@ function renderCountdown() {
     }
   } else if (Date.now() - cdBootAt > 3500 && Date.now() - cdDataAt > 3500) {
     cdSet("idle", "—", "wait",
-          window.__CG_PLUGIN__ ? "Reaching the IDE engine…"
+          window.__FD_PLUGIN__ ? "Reaching the IDE engine…"
                                : "Countdown arms when the IDE plugin bridge connects",
           "waiting for /api/ide-activity", 0);
   }
   /* plugin mode: the IDE engine is the source of truth — mirror it into the crunch clock */
-  if (window.__CG_PLUGIN__ && e && mode === "crunch") {
+  if (window.__FD_PLUGIN__ && e && mode === "crunch") {
     crunch = e.crunch;
     $("crunchClock").textContent = Math.round(crunch) + "%";
     $("crunchMeter").firstElementChild.style.width = crunch + "%";
@@ -565,23 +558,15 @@ function renderCountdown() {
 setInterval(renderCountdown, 500);
 
 /* ================= break flow ================= */
-/* (the IDE engine fires breaks automatically — no manual trigger button) */
-
-document.querySelectorAll(".t-preset").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".t-preset").forEach(x => x.classList.remove("active"));
-  b.classList.add("active");
-  breakTarget = parseInt(b.dataset.steps, 10);
-});
+/* (the IDE engine fires breaks automatically — no manual trigger button;
+   since 3.4.0 the steps target is applied by the relay from the IDE settings) */
 
 /* called by the focus countdown; the IDE engine adopts the session and pauses */
 async function triggerBreak() {
   if (session) return;
   stopAll();
   try {
-    const r = await fetch("/api/session", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target: breakTarget })
-    });
+    const r = await fetch("/api/session", { method: "POST" });
     session = await r.json();
   } catch { return toast("⚠ Relay offline — cannot create session", "warn"); }
   showBreakUI();
@@ -719,6 +704,15 @@ addEventListener("keydown", (e) => {
 });
 
 boot(); renderClock();
+
+/* status-bar badge shows the REAL relay version (3.3.1) — the static
+   text above is only the no-JS fallback */
+fetch("/api/health").then(r => r.json()).then(h => {
+  if (h && h.version) {
+    const el = $("sbVer");
+    if (el) el.textContent = "⚔ FitDeveloper v" + h.version;
+  }
+}).catch(() => {});
 </script>
 </body>
 </html>

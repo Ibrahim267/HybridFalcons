@@ -105,7 +105,6 @@ footer{margin-top:auto;padding-top:20px;font-size:10px;color:#3b4654;text-align:
   <div class="shake-note">Phone in hand or pocket — walk naturally. Each real step counts via the motion sensor.</div>
 
   <button class="btn primary" id="motionBtn">Enable Motion Sensor</button>
-  <button class="btn tiny" id="tapBtn">+1 step</button>
 
   <div class="sync" id="syncTxt" style="display:none"></div>
   <div class="hint" id="hintBox"></div>
@@ -113,11 +112,10 @@ footer{margin-top:auto;padding-top:20px;font-size:10px;color:#3b4654;text-align:
 
 <div id="done">
   <h1>WALK COMPLETE!</h1>
-  <div class="sub"><b id="doneSteps">0</b> steps verified in <b id="doneTime">—</b> — the desktop just flashed green.<br>+100 Mana secured. Return to your desk and keep shipping.</div>
-  <button class="btn primary" id="againBtn" style="max-width:260px">Walk Again</button>
+  <div class="sub"><b id="doneSteps">0</b> steps verified in <b id="doneTime">—</b> — the desktop just flashed green.<br>+100 Mana secured. Return to your desk and keep shipping.<br><br>The next walk opens when the crunch meter fills again.</div>
 </div>
 
-<footer>FitDeveloper plugin v3.2.0 — walk to unlock</footer>
+<footer>FitDeveloper plugin v3.4.1 — walk to unlock</footer>
 
 <script>
 "use strict";
@@ -169,7 +167,6 @@ function noSession(title, msg) {
   setState(title, "warn");
   showHint(msg);
   $("motionBtn").disabled = true;
-  $("tapBtn").disabled = true;
 }
 
 /* ---------- render + sync ---------- */
@@ -208,7 +205,7 @@ $("motionBtn").onclick = async () => {
       const p = await DM.requestPermission();   // MUST be inside a user gesture
       if (p !== "granted") {
         setState("motion permission denied", "err");
-        showHint("Permission denied. Go to <b>Settings → Safari → Motion &amp; Orientation Access</b> (or reload and tap Allow). Meanwhile use the +1 button.");
+        showHint("Permission denied. Go to <b>Settings → Safari → Motion &amp; Orientation Access</b> (or reload and tap Allow).");
         return;
       }
     } else if (!DM) {
@@ -216,14 +213,14 @@ $("motionBtn").onclick = async () => {
       showHint(
         (isIOS
           ? "This iOS browser has no motion API. Use <b>Safari</b>, and make sure the address starts with <b>https://</b> (accept the certificate warning) — iOS blocks sensors on http:// pages."
-          : "Try <b>Chrome</b> on Android, or use the +1 button.")
+          : "Try <b>Chrome</b> on Android — make sure the page is served over <b>https://</b> where sensors are not blocked.")
       );
       return;
     }
     startStepDetection();
   } catch (e) {
     setState("motion error", "err");
-    showHint("Motion error: " + (e.message || e) + "<br>If on iPhone over http:// — switch to the https:// link. Meanwhile: use the +1 button.");
+    showHint("Motion error: " + (e.message || e) + "<br>If on iPhone over http:// — switch to the https:// link.");
   }
 };
 
@@ -265,11 +262,11 @@ function startStepDetection() {
         showHint(
           "<b>iOS blocks motion sensors on non-HTTPS pages.</b><br>" +
           "Fix: open the <b>https://</b> link (scan the QR again → tap <b>visit website</b> when the certificate warning appears) → then tap Enable Motion Sensor.<br>" +
-          "Also check: Settings → Safari → Advanced → Motion &amp; Orientation Access = ON.<br>Meanwhile: use the +1 button."
+          "Also check: Settings → Safari → Advanced → Motion &amp; Orientation Access = ON."
         );
       } else {
         showHint(
-          "No motion events received. Try <b>Chrome</b>, check that another app isn't holding the sensor, or just use the <b>+1</b> button."
+          "No motion events received. Try <b>Chrome</b>, or check that another app isn't holding the motion sensor."
         );
       }
     }
@@ -297,7 +294,6 @@ function countStep() {
   if (steps > 0 && steps % 50 === 0 && navigator.vibrate) navigator.vibrate([40, 30, 40]);
   if (steps >= target) { push(); win(); }
 }
-$("tapBtn").onclick = () => { if (!sid) return; if (!motionOn) startStepDetection(); countStep(); };
 
 /* ---------- win ---------- */
 function win() {
@@ -315,13 +311,10 @@ function win() {
     $("doneSteps").textContent = steps;
   }, 550);
 }
-$("againBtn").onclick = () => {
-  done = false; steps = 0; halfwayShown = false; render();
-  $("done").style.display = "none";
-  $("main").style.display = "flex";
-  $("flashbar").classList.remove("on");
-  setState("connected — start walking", "live");
-};
+/* 3.3.1: the completion screen is terminal — a new walk can only start
+   from a NEW break (the crunch meter filling to 100% again). No fake
+   "walk again" reset, no manual step buttons: every step must come from
+   the real motion sensor of a real break. */
 
 loadSession(); render();
 

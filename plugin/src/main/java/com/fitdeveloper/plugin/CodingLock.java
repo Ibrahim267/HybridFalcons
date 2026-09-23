@@ -40,6 +40,11 @@ import org.jetbrains.annotations.Nullable;
  * getRawHandler/setRawHandler race). Blocking is decided by a live boolean
  * read at keystroke time (engine enabled AND a break open) — it NEVER touches
  * the handler chain, so enable/disable is instant and error-free by design.
+ *
+ * 3.4.0: every swallowed keystroke also pulses {@link BreakFlashHub} (rate
+ * limited), so the tool window can FLASH the scan QR / step counter red —
+ * visual "this is why you cannot type" feedback. The pulse is fire-and-
+ * forget and fully guarded: it can never resurrect the keystroke or throw.
  */
 public final class CodingLock {
 
@@ -48,6 +53,7 @@ public final class CodingLock {
 
     private static volatile long lastBalloon;
     private static volatile long lastBrowser;
+    private static volatile long lastFlashPulse;
 
     private CodingLock() {
     }
@@ -101,6 +107,12 @@ public final class CodingLock {
 
     private static void attention() {
         long now = System.currentTimeMillis();
+        if (now - lastFlashPulse > 4_000) {
+            // 3.4.0: at most one red-flash burst every 4 s, so frantic typing
+            // during a break flashes "a few times" without turning into a strobe
+            lastFlashPulse = now;
+            BreakFlashHub.pulse();
+        }
         if (now - lastBalloon > 15_000) {
             lastBalloon = now;
             BreakNotifier.walkReminder(remainingSteps());

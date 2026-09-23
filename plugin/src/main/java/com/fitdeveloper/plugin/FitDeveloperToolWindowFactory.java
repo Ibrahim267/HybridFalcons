@@ -47,10 +47,21 @@ import java.net.URI;
  *     when you stop
  *   - at 100% the break fires AUTOMATICALLY — typing is locked until the
  *     walk is verified; live step progress while it is open
+ *   - 3.4.0: trying to type while a break is open gives instant visual
+ *     feedback — the scan QR flashes RED a few times (phone not scanned
+ *     yet), or the big step counter flashes red (phone connected but the
+ *     step goal not reached yet). The big step counter itself now renders
+ *     in a bright high-contrast white instead of the hard-to-read teal.
+ *   - 3.4.1: the progress bar caption ("0 / 200 steps", "crunch %") is no
+ *     longer the LAF's theme-blue string on the gray track — it is our own
+ *     bold ink label on a clear orange fill, readable in both themes.
  *   - a live QR for the phone walker (pure-Java {@link QrCode}, no JCEF
  *     needed — Android Studio has none) that appears ONLY once the countdown
  *     has finished and the break is actually open — scanning it joins that
- *     walk directly; while counting down the panel is hidden entirely
+ *     walk directly; while counting down the panel is hidden entirely; since
+ *     3.3.0 the Break scan screen setting can also keep it hidden for good
+ *     ("Browser only" — the dashboard in the browser is then the only
+ *     scan surface)
  *   - two shortcuts: the Settings page and the browser dashboard
  *
  * The whole layout is GridBag-driven and reflows when the tool window is
@@ -69,16 +80,33 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
     private static final JBColor EMERALD = new JBColor(new Color(8, 138, 100),  new Color(52, 211, 153));
     private static final JBColor DIM     = new JBColor(new Color(104, 118, 134), new Color(125, 139, 154));
 
+    /* 3.4.0: the live step counter color — near-white on dark themes,
+       near-black on light ones: maximum contrast, no squinting (the old
+       teal/emerald read as "blue" and tired the eyes). */
+    private static final JBColor BRIGHT  = new JBColor(new Color(27, 31, 36),   new Color(236, 241, 246));
+    /* QR module ink — the "normal" color the blocked-typing flash restores to. */
+    private static final JBColor QR_INK  = new JBColor(Color.BLACK, new Color(210, 218, 226));
+    /* 3.4.1: progress-bar fill — a deep orange that pops on the gray track in
+       BOTH themes (the IDE's default progress blue was too close to it). The
+       "0 / 200 steps" caption is NOT the LAF string anymore: the LAF paints
+       it in theme blue on gray, which is exactly what tired the eyes — the
+       caption is now our own {@link #barText} label in the high-contrast
+       {@link #BRIGHT} ink, readable on the gray track and the orange fill. */
+    private static final JBColor BAR_FILL = new JBColor(new Color(232, 92, 16), new Color(217, 84, 10));
+
     private JLabel cdTitle;
     private JLabel cdNum;
     private JTextArea cdUnit;
     private JTextArea status;
     private JProgressBar bar;
+    private JLabel barText; // 3.4.1: our own bar caption (the LAF's stringPainted was theme blue on gray)
     private QrView qrView;
     private JTextArea qrCaption;
     private JBPanel<JBPanel<?>> qrPanel;
     private String qrCurrentUrl = null; // URL currently encoded in the QR (null = hidden)
     private Object browser; // JBCefBrowser via reflection, kept for disposal
+    private Timer flashTimer;          // 3.4.0 blocked-typing red-flash burst
+    private volatile long flashUntil;  // while set, refresh() must not recolor the flash targets
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
@@ -89,6 +117,30 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         // Tab 1 — native status panel, ALWAYS present (never blank).
         var nativeContent = factory.createContent(statusPanel(project, url), "Status", false);
         toolWindow.getContentManager().addContent(nativeContent);
+
+        // 3.4.0: blocked-keystroke feedback — the coding lock pulses (rate
+        // limited), this panel answers with a short red flash: the scan QR
+        // while no phone is connected, the big step counter afterwards.
+        BreakFlashHub.setListener(() -> {
+            try {
+                String fid = FitDeveloperEngine.forcedSessionId();
+                if (fid == null) {
+                    fid = FitDeveloperEngine.activeBreakSessionId();
+                }
+                if (fid == null || !FitDeveloperSettings.showQrInToolWindow()) {
+                    return; // browser-only mode: the browser page is the feedback surface
+                }
+                FitDeveloperServer.Session s = FitDeveloperServer.sessionById(fid);
+                boolean walkerConnected = s != null && s.walkerConnected;
+                boolean goalMet = s != null && s.steps >= s.target;
+                if (goalMet) {
+                    return; // the lock releases on its own — nothing to complain about
+                }
+                javax.swing.SwingUtilities.invokeLater(() -> startFlash(walkerConnected));
+            } catch (Throwable ignored) {
+                // feedback is cosmetic — never let it propagate into the lock
+            }
+        });
 
         // Tab 2 — embedded web dashboard, only when JCEF actually works.
         JComponent web = embeddedDashboard(url);
@@ -169,8 +221,12 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         cdUnit = wrapArea("starting the engine…", 1.0f, DIM);
 
         bar = new JProgressBar(0, 100);
-        bar.setStringPainted(true);
-        bar.setString("crunch 0%");
+        bar.setStringPainted(false); // 3.4.1: the LAF string is theme blue on the gray track — unreadable
+        bar.setForeground(BAR_FILL);
+        bar.setPreferredSize(new Dimension(bar.getPreferredSize().width, 20));
+        barText = new JLabel("crunch 0%", SwingConstants.CENTER);
+        barText.setFont(barText.getFont().deriveFont(Font.BOLD, 11f));
+        barText.setForeground(BRIGHT);
 
         status = wrapArea(" ", 1.0f, DIM);
 
@@ -188,6 +244,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         card.add(cdUnit, cc);
         cc.gridy = 3;
         card.add(bar, cc);
+        card.add(barText, cc); // same GridBag cell — the ink caption paints on top of the orange fill
         cc.gridy = 4;
         cc.insets = new Insets(8, 0, 0, 0);
         card.add(status, cc);
@@ -200,7 +257,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         qrPanel.setVisible(false); // 3.1.0: appears only when the countdown finishes
 
         qrView = new QrView();
-        qrView.setForeground(new JBColor(Color.BLACK, new Color(210, 218, 226)));
+        qrView.setForeground(QR_INK);
 
         qrCaption = wrapArea("BREAK OPEN \u2014 scan now and walk until the IDE unlocks!",
                 1.0f, DIM);
@@ -318,7 +375,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
                 cdUnit.setText("enable the engine in Settings | Tools | FitDeveloper to resume");
                 bar.setMaximum(100);
                 bar.setValue(0);
-                bar.setString("crunch 0%");
+                barText.setText("crunch 0%");
                 status.setText("engine paused \u2014 nothing is watched, nothing is interrupted");
                 return;
             }
@@ -327,14 +384,20 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
                 FitDeveloperServer.Session s = FitDeveloperServer.sessionById(fid);
                 int steps = s != null ? s.steps : 0;
                 int tgt = s != null ? s.target : target;
+                boolean flashing = System.currentTimeMillis() < flashUntil;
                 cdTitle.setText("BREAK OPEN — WALK TO UNLOCK");
                 cdNum.setText(String.valueOf(steps));
-                cdNum.setForeground(EMERALD);
-                cdUnit.setText("of " + tgt + " steps \u00b7 the IDE unlocks at the finish");
+                if (!flashing) {
+                    // 3.4.0: bright high-contrast counter (the old teal read as
+                    // "blue" and was hard on the eyes); while a blocked-keystroke
+                    // flash burst runs, the flash owns this color
+                    cdNum.setForeground(BRIGHT);
+                    cdUnit.setText("of " + tgt + " steps \u00b7 the IDE unlocks at the finish");
+                    status.setText("your phone counts real steps \u2014 typing stays blocked until the walk is verified");
+                }
                 bar.setMaximum(tgt);
                 bar.setValue(steps);
-                bar.setString(steps + " / " + tgt + " steps");
-                status.setText("your phone counts real steps \u2014 typing stays blocked until the walk is verified");
+                barText.setText(steps + " / " + tgt + " steps");
                 return;
             }
 
@@ -343,7 +406,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
             int ramp = Math.max(5, FitDeveloperSettings.rampSeconds());
             int left = (int) Math.ceil((100.0 - cr) * ramp / 100.0);
             bar.setValue((int) cr);
-            bar.setString("crunch " + (int) cr + "%");
+            barText.setText("crunch " + (int) cr + "%");
 
             boolean typingOnly = FitDeveloperSettings.timerTypingOnly();
             String modeNote = typingOnly ? "typing mode" : "continuous countdown";
@@ -397,14 +460,59 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
     }
 
     /**
+     * 3.4.0 blocked-typing feedback: flash RED a few times so the developer
+     * SEES why typing is dead. stepsMode=false flashes the scan QR (phone
+     * not scanned yet); stepsMode=true flashes the big step counter (phone
+     * connected but the step goal not reached). One burst = 4 red blinks
+     * over ~1.4 s. Further pulses are ignored while a burst runs, and
+     * {@link #refresh()} leaves the flashed colors alone until it ends
+     * ({@code flashUntil}) — afterwards the normal 1 s repaint restores
+     * everything by itself.
+     */
+    private void startFlash(boolean stepsMode) {
+        if (flashTimer != null && flashTimer.isRunning()) {
+            return;
+        }
+        flashUntil = System.currentTimeMillis() + 8 * 180L + 250L;
+        final int[] tick = {0};
+        flashTimer = new Timer(180, ev -> {
+            tick[0]++;
+            boolean red = tick[0] % 2 == 1;
+            if (stepsMode) {
+                cdNum.setForeground(red ? RED : BRIGHT);
+            } else {
+                qrView.setForeground(red ? RED : QR_INK);
+                qrCaption.setForeground(red ? RED : DIM);
+                qrCaption.setText(red
+                        ? "TYPING IS LOCKED \u2014 scan the QR and walk to unlock!"
+                        : "BREAK OPEN \u2014 scan now and walk until the IDE unlocks!");
+            }
+            if (tick[0] >= 8) {
+                ((Timer) ev.getSource()).stop();
+                if (stepsMode) {
+                    cdNum.setForeground(BRIGHT);
+                } else {
+                    qrView.setForeground(QR_INK);
+                    qrCaption.setForeground(DIM);
+                    qrCaption.setText("BREAK OPEN \u2014 scan now and walk until the IDE unlocks!");
+                }
+            }
+        });
+        flashTimer.start();
+    }
+
+    /**
      * Keeps the QR in sync with the break lifecycle (3.1.0 rule): the QR is
      * shown ONLY while a walk break is actually open — i.e. AFTER the
      * countdown has finished. While the countdown runs (or the engine is
      * paused) the panel is hidden, so the tool window stays a pure status
      * display. The QR is regenerated only when the encoded URL changes.
+     * Since 3.3.0 the panel is ALSO hidden whenever the Break scan screen
+     * setting is "Browser only" — the dashboard in the default browser is
+     * then the single scan surface.
      */
     private void updateQr(String sessionId) {
-        if (sessionId == null) {
+        if (sessionId == null || !FitDeveloperSettings.showQrInToolWindow()) {
             if (qrPanel.isVisible()) {
                 qrCurrentUrl = null;
                 qrView.setQr(null);

@@ -16,6 +16,37 @@
     the walker goes silent. <b>Disable the engine</b> in Settings | Tools |
     FitDeveloper and nothing is watched, nothing fires, nothing is ever
     blocked — the master switch, no uninstall needed.</p>
+    <p><b>New in 3.4.1</b> — the tool window's progress bar stopped fighting
+    your eyes: its "0 / 200 steps" / "crunch %" caption is no longer painted
+    by the theme in default <b>blue on the gray track</b> — the bar now fills
+    in a clear deep orange and the caption is a <b>bold high-contrast ink
+    label</b> on top of it, readable in both light and dark themes.</p>
+    <p><b>New in 3.4.0</b> — clearer eyes and honest configuration: the big
+    live <b>step counter now renders in a bright, high-contrast white</b>
+    instead of the hard-to-read teal; the <b>steps target and the break
+    timing can be changed ONLY in Settings | Tools | FitDeveloper</b> — the
+    browser dashboard stopped being a second settings page (its 100/200/500
+    step and 25/50/90-minute preset buttons are gone; it is now a pure live
+    status display); and when the break scan screen shows the QR in the
+    plugin, <b>trying to type during a break gives instant visual
+    feedback</b>: until the phone is scanned the QR flashes red a few times,
+    and once it is connected (but the step goal is not reached yet) the step
+    counter itself flashes red. The web dashboard's live engine strip also
+    reads the engine state again (fixes a renaming leftover).</p>
+    <p><b>New in 3.3.1</b> — the phone walker page is now honest-only: the
+    fake <b>"+1 step" manual button was removed</b> (every step must come
+    from the real motion sensor) and the <b>"Walk Again" button is gone</b>
+    — a new walk can only start from a NEW break once the crunch meter
+    fills to 100% again, never by resetting the finished session. The
+    dashboard badge now always shows the real relay version.</p>
+    <p><b>New in 3.3.0</b> — you choose where the break scan screen appears:
+    Settings | Tools | FitDeveloper gains a <b>Break scan screen</b> selector
+    with three modes — <b>Both</b> (the default: the QR in the tool window
+    and the dashboard opening in your browser, exactly as before), <b>Plugin
+    only</b> (scan the QR right inside the IDE; no browser window ever pops
+    up) and <b>Browser only</b> (the dashboard opens in your browser; the
+    tool window stays a pure status display). The break balloon wording
+    adapts to the chosen mode automatically.</p>
     <p><b>New in 3.2.0</b> — the whole project now ships under the
     <b>FitDeveloper</b> name only: repository folders, build and launch
     scripts, the browser dashboard, the phone walker pages and the standalone

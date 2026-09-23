@@ -12,36 +12,45 @@ no separate server window — the relay is embedded in the IDE itself.
 
 | | without-plugin (browser tab) | **plugin (this folder)** |
 |---|---|---|
-| Dashboard | regular browser tab | **JCEF tool window inside the IDE** (right side) |
-| Crunch detection | input inside the browser tab only | **REAL editor keystrokes** from the IDE (every file you type in) |
-| Break trigger | QR in browser overlay | QR in the tool window **+ IDE balloon + auto-focus of the tool window** |
-| Forced breaks | not automatic — someone must watch the page | **fully automatic: the engine inside the IDE forces the break** (balloon + QR screen opens in your browser by itself) |
-| Relay server | `node server.js` (ports 8787/8788) | **embedded Java relay** (port 8790, auto-fallback up to 8795) |
+| Dashboard | regular browser tab | **JCEF tool window inside the IDE** (right side) + native status panel |
+| Crunch engine | the page's own focus timer | **IDE engine** — continuous countdown (default) or only-while-typing, with a live seconds-accurate break countdown |
+| Break trigger | QR in browser overlay | QR in the tool window **and/or** the browser dashboard — per the **Break scan screen** setting (Both / Plugin only / Browser only) |
+| Forced breaks | not automatic — someone must watch the page | **fully automatic: at crunch 100% the engine forces the break** (balloon + scan surface per setting) |
+| Relay server | `node server.js` (ports 8787/8788) | **embedded Java relay** (http 8790+, auto-fallback up to 8795, https 8791+) |
 | Needs Node.js | yes | **no** |
-| Walk enforcement | honor-system: nobody checks if you keep coding | **typing is BLOCKED while a break is open** (try to type -> the break screen re-opens in your browser) |
-| Break countdown | — | **live countdown in the dashboard AND inside the IDE tool window** — ticks 90 → 89 → 88… seconds until the forced break, cyan → amber → pulsing red as it nears zero (idle shows "cooling down", break shows "walk to unlock" + step progress, engine off shows "paused") |
+| Walk enforcement | honor-system: nobody checks if you keep coding | **typing is BLOCKED while a break is open** — and since 3.4.0 trying to type flashes the QR (or the step counter) red so you see why |
 | Phone sensor (iOS) | needs the https:// link | **built-in HTTPS port 8791** — the QR encodes it directly |
 
 ## Configure (Settings | Tools | FitDeveloper)
 
-- **Enable/disable the forced-break engine** — one checkbox, no uninstall
-  needed to stop it.
-- **Sustained-typing seconds before the IDE forces a break** — free numeric
-  field (5–3600 s). Defaults to 90.
-- **Steps required to verify the break** — free numeric field (10–5000).
-  Defaults to 200.
+**Since 3.4.0 this settings page is the ONLY place where the steps target
+and the break timing can be changed** — the browser dashboard carries no
+config buttons anymore and is a pure live status display.
 
-Every value is a plain editable number: type it, press **Apply**, and the
-engine picks it up on the next tick — no IDE restart. Small values make the
-cycle fast for a quick showing; larger values model a realistic healthy-work
-rhythm. The tool window also has **"Force break now"** (instant break screen)
-and a live engine on/off checkbox. While a break is open the coding lock
-swallows typed characters — finish the walk and typing unlocks by itself.
+- **Enable FitDeveloper engine** — the master switch (countdown + automatic
+  walk breaks). One checkbox, no uninstall needed to stop it.
+- **Timer mode** — *Continuous countdown* (default: counts every second at
+  the machine, typing or not) or *Only while typing* (arms on keystrokes,
+  decays when idle).
+- **Break scan screen** — where the phone scan surface appears when a break
+  opens: **Both** (QR in the plugin AND the dashboard in the browser,
+  default), **Plugin only** (no browser window ever opens), **Browser only**
+  (no QR in the tool window).
+- **Minutes until the walk break** — the crunch ramp in minutes (fractional,
+  1–120). Default **30** — research-backed: a ~5-minute walk for every 30
+  minutes of sitting (Columbia University, 2023; Harvard Health).
+- **Steps required to verify the break (QR target)** — 10–5000, default 200.
 
-When a break starts, the tool window shows the QR; the phone walks; steps sync
-live; when the target is reached the IDE gets the
-**"Crunch Break Verified! +100 Mana"** balloon. Demo Mode still works with no
-phone (toggle in the dashboard header).
+Every value applies the moment **Apply** is pressed — no IDE restart. The
+tool window is a pure STATUS panel (big color-escalating countdown, live
+step progress while a break is open, QR when the break is open, shortcuts
+to Settings and the browser dashboard) — no duplicated controls.
+
+While a break is open the coding lock swallows typed characters; trying to
+type makes the scan QR flash red a few times (phone not scanned yet), then
+the live step counter flash red (scanned but the goal is not reached).
+Finish the walk and typing unlocks by itself — or the break self-releases
+after 15 minutes with no walker / 5 minutes of walker silence.
 
 ## Build
 
@@ -57,7 +66,7 @@ The Gradle build auto-downloads the JDK if missing.
    A sandbox IDE starts with the plugin installed.
 4. To package it: Gradle panel → `intellij → buildPlugin`.
    The installable zip appears at
-   `plugin/build/distributions/fitdeveloper-plugin-2.4.1.zip`.
+   `plugin/build/distributions/fitdeveloper-plugin-3.4.0.zip`.
 
 ### Option B — from a terminal
 
@@ -75,27 +84,29 @@ as the build JVM, with the Gradle 8.12 distribution already cached in
 `~\.gradle`. Double-click it, then watch `build_log.txt`.
 
 ```bat
-plugin\_build_plugin.bat          # -> plugin\build\distributions\fitdeveloper-plugin-2.4.1.zip
+plugin\_build_plugin.bat          # -> plugin\build\distributions\fitdeveloper-plugin-3.4.0.zip
 ```
 
-The zip name follows `rootProject.name` (`fitdeveloper-plugin-2.4.1.zip`),
+The zip name follows `rootProject.name` (`fitdeveloper-plugin-3.4.0.zip`),
 not the plugin id — both install fine.
 
 ## Install into your real IDE
 
 1. `Settings/Preferences → Plugins → ⚙ (gear icon) → Install Plugin from Disk…`
-2. Pick `plugin/build/distributions/fitdeveloper-plugin-2.4.1.zip`.
+2. Pick `plugin/build/distributions/fitdeveloper-plugin-3.4.0.zip`.
 3. Restart the IDE. The **FitDeveloper** tool window appears on the right
    (sidebar icon), and the relay prints
    `[FitDeveloper] relay on http://localhost:8790` to the IDE console/log.
 
 ## Phone / walk flow (same as standalone)
 
-1. Dashboard (tool window) → Start a focus or crunch session.
-2. Break triggers → QR appears → scan with your phone (same Wi-Fi).
-3. Phone opens `http://<your-LAN-IP>:8790/walk?s=<id>` and counts real steps
-   (DeviceMotion peak detection).
-4. Progress syncs live; done → verified, Mana awarded.
+1. Work until the crunch meter hits 100% — the break opens automatically.
+2. Scan the QR (per the Break scan screen setting: in the tool window,
+   in the browser dashboard, or both).
+3. Phone opens `https://<your-LAN-IP>:8791/walk?s=<id>` and counts real
+   steps (DeviceMotion peak detection — no manual buttons; every step is
+   sensor-verified).
+4. Progress syncs live; done → verified, Mana awarded, IDE unlocked.
 
 Phone cannot connect? Run `firewall_fix_plugin.bat` once (admin) — it opens
 TCP 8790-8795.
@@ -107,8 +118,9 @@ TCP 8790-8795.
   encodes the https:// URL — scan, accept the certificate warning once, and
   real steps work on iOS from the plugin too. Android Chrome also fine.
 - The dashboard page is served with a tiny injected `ide-bridge.js`
-  (`IDE plugin mode` badge in the corner). It polls `/api/ide-activity` and
-  feeds real editor keystrokes into the crunch meter — delete it from
+  (`FitDeveloper - crunch N%` badge in the corner). It polls
+  `/api/ide-activity` and mirrors the engine into the page (live break
+  countdown strip, auto-adopt of the forced session) — delete it from
   `FitDeveloperServer.IDE_BRIDGE_JS` if you want the plain page.
 - Session/progress/log/config APIs are byte-compatible with the standalone
   `server.js`, so `test_e2e.js` from the standalone folder can be pointed at
@@ -119,13 +131,20 @@ TCP 8790-8795.
 ```
 plugin/
 ├── build.gradle.kts / settings.gradle.kts / gradle.properties
+├── _build_plugin.bat                  offline one-click build (local SDK)
 ├── firewall_fix_plugin.bat            one-click firewall rule (8790-8795)
 ├── src/main/resources/META-INF/plugin.xml
 ├── src/main/resources/web/            SAME front-end as without-plugin/public
 └── src/main/java/com/fitdeveloper/plugin/
     ├── FitDeveloperServer.java          embedded relay (Java port of server.js)
-    ├── EditorActivityListener.java     real IDE keystroke counter
-    ├── FitDeveloperStartup.java         boots relay + listener at IDE start
-    ├── FitDeveloperToolWindowFactory.java  JCEF dashboard tool window
+    ├── FitDeveloperEngine.java          crunch engine (timer modes, forced breaks)
+    ├── FitDeveloperSettings.java        Settings | Tools | FitDeveloper page
+    ├── FitDeveloperToolWindowFactory.java  native status panel + in-IDE QR
+    ├── CodingLock.java                  walk-to-unlock typing guard (fail-safe)
+    ├── FitDeveloperDynamicHook.java     unload-safety for the handler chain
+    ├── FitDeveloperStartup.java         boots relay + engine at IDE start
+    ├── EditorActivityListener.java      real IDE keystroke activity
+    ├── BreakFlashHub.java               lock → tool-window flash signaling
+    ├── QrCode.java                      pure-Java QR renderer
     └── BreakNotifier.java              IDE balloons + tool-window auto-focus
 ```
