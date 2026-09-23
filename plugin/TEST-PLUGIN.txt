@@ -1,57 +1,69 @@
 ============================================================
- CrunchGuard PLUGIN v2.2.0 — HOW TO TEST (5 minutes)
+ FitDeveloper PLUGIN v2.4.1 — HOW TO TEST (5 minutes)
  Forced-break engine + fully editable settings inside the IDE
 ============================================================
 
 THE ZIP IS ALREADY ON YOUR DESKTOP:
-  crunchguard-plugin-2.2.0.zip
+  fitdeveloper-plugin-2.4.1.zip
 
-WHAT'S NEW IN v2.2.0
---------------------
-- FORCED BREAKS ARE FULLY AUTOMATIC: type continuously and the IDE
-  itself pops a balloon + opens the QR screen in your browser.
-  You never have to open anything manually.
-- Settings | Tools | CrunchGuard: change the seconds of sustained
-  typing that trigger a break AND the steps target. Both are plain
-  editable numbers - type whatever you want, press Apply, it takes
-  effect on the next tick (no restart).
-- One checkbox to stop/start the engine without uninstalling.
-- Tool window button "Force break now" opens a break instantly.
+WHAT'S NEW IN v2.4.1
+----------------------
+- REBRAND: the plugin is now "FitDeveloper" (was CrunchGuard).
+  Same engine, same features — new name in the tool window,
+  settings page, dashboard, phone walker page and logs.
+- WORKS IN INTELLIJ IDEA TOO: verified live in IntelliJ IDEA
+  2026.2.3 AND Android Studio 2024.3.2. Any IntelliJ-platform
+  IDE 2024.2 or newer loads it (platform-only dependency,
+  compatible up to build 299.*).
+- TOOL WINDOW POPS OPEN BY ITSELF: open a project and the
+  FitDeveloper tool window appears on the right edge with the
+  live crunch meter — nothing to click first.
+- PORT-TAKEOVER RETRY: if another app (or the other IDE) holds
+  the relay ports at startup, the plugin now retries every 3
+  seconds until one frees up, instead of giving up for that
+  session. Two IDEs at once? The first one opened owns
+  http://localhost:8790 — the second shows its own dashboard
+  from localhost:8792 and works just as well.
 
-STEP 1 — INSTALL INTO ANDROID STUDIO
-------------------------------------
-1. Open Android Studio
+WHAT CAME BEFORE (already in the build)
+-----------------------------------------
+- BREAK COUNTDOWN: a big glowing ring in the dashboard (90 ...
+  89 ... 88 ... while you type; cyan -> amber -> red pulsing in
+  the last ~20 s) plus a big countdown card in the tool window.
+- REAL PHONE STEPS: the relay serves HTTPS (port 8791). The QR
+  encodes https://<LAN-IP>:8791 — accept the certificate
+  warning once and the DeviceMotion pedometer works (iOS needs
+  the secure context).
+- WALK TO UNLOCK IS ENFORCED: while a break is open, typing in
+  the IDE is BLOCKED. Finish the walk -> typing works again.
+- FULLY EDITABLE SETTINGS: Settings | Tools | FitDeveloper —
+  sustained-typing seconds AND step target are free numeric
+  fields, Apply takes effect on the next tick. One checkbox
+  stops/starts the engine without uninstalling.
+
+STEP 1 — INSTALL
+----------------
+IntelliJ IDEA / Android Studio (any 2024.2+):
+1. Open the IDE
 2. File -> Settings -> Plugins
-   (on Mac: Android Studio -> Settings -> Plugins)
-3. Click the gear icon (top right of the Plugins panel)
+3. Gear icon (top right of the Plugins panel)
 4. "Install Plugin from Disk..."
 5. Pick the Desktop zip -> OK
-6. Restart Android Studio when prompted
+6. Restart the IDE when prompted
 
-(WORKS IN ANY JETBRAINS IDE TOO: IntelliJ IDEA, PyCharm, WebStorm...
- platform 2024.2-2025.2. Android Studio is fine since it IS the
- IntelliJ platform - your build AI-243 is supported.)
+(The zip is ALSO pre-seeded into this machine's IDEA and
+Android Studio — if you use those, skip this step.)
 
 STEP 2 — OPEN A PROJECT
 -----------------------
-Open any project (or New Project -> Empty Activity, whatever is fast).
-On startup the plugin:
+Open any project. On startup the plugin:
   - starts the embedded relay on http://localhost:8790
   - registers the REAL editor keystroke counter
   - starts the forced-break engine (1-second tick)
+  - opens the FitDeveloper tool window on the right edge
 
-STEP 3 — FIND THE TOOL WINDOW
------------------------------
-Look at the RIGHT edge of the IDE -> vertical tab "CrunchGuard".
-Click it -> live control panel:
-  - crunch meter status, updating every second
-  - "Forced breaks enabled" checkbox (stop/start the engine)
-  - "Force break now" button (instant QR screen)
-  - "Settings..." shortcut
-  - "Open Dashboard" for the full browser UI
-
-STEP 4 — MAKE IT TRIGGER FAST (for a quick showing)
----------------------------------------------------
+STEP 3 — MAKE IT TRIGGER FAST (for a quick showing)
+----------------------------------------------------
 1. Tool window -> "Settings..."
 2. Set "Sustained-typing seconds before the IDE forces a break"
    to something small (e.g. 10) and "Steps required" to something
@@ -67,25 +79,25 @@ ANY OTHER VALUE WORKS THE SAME WAY - the fields are free numeric
 inputs, not fixed choices. Small values = fast showing, large
 values = a realistic healthy-work rhythm.
 
-STEP 5 — FULL WALK CYCLE
+STEP 4 — FULL WALK CYCLE
 ------------------------
 1. Trigger a break (or let the crunch meter fill)
-   -> tool window auto-focuses + balloon "Crunch break triggered"
+   -> balloon "Crunch break triggered"
    -> QR code appears on the break screen
-2. Scan the QR with your Android phone (same Wi-Fi)
-   -> phone opens http://<LAN-IP>:8790/walk?s=<id>
+2. Scan the QR with your phone (same Wi-Fi)
+   -> phone opens https://<LAN-IP>:8791/walk?s=<id>
    -> walk -> steps count -> progress syncs LIVE in the IDE
 3. Target reached
    -> IDE balloon: "Crunch Break Verified! +100 Mana"
 
-NO PHONE AT HAND? Use Demo Mode in the dashboard header (same as
-the standalone version) - it simulates the walk.
+NO PHONE AT HAND? Use Demo Mode in the dashboard header - it
+simulates the walk.
 
-STEP 6 — TURN THE ENGINE OFF/ON (no uninstall)
+STEP 5 — TURN THE ENGINE OFF/ON (no uninstall)
 ----------------------------------------------
 Tool window -> uncheck "Forced breaks enabled"
   -> the engine stops watching; crunch resets to 0.
-Check it again to resume. Or Settings | Tools | CrunchGuard ->
+Check it again to resume. Or Settings | Tools | FitDeveloper ->
 first checkbox (same switch, one Apply away).
 
 IF THE PHONE CANNOT CONNECT
@@ -96,20 +108,23 @@ It opens TCP 8790-8795. (Windows usually asks on first connect too.)
 
 KNOWN LIMITS
 ------------
-- iOS/Safari needs HTTPS for motion sensors -> plugin relay is HTTP,
-  so real steps on iPHONES require the without-plugin variant
-  (HTTPS 8788). Android Chrome: works over HTTP. Demo Mode works
-  everywhere.
-- If a forced break is open and nobody scans the QR, it is given up
-  after 15 minutes and the engine resumes watching.
+- The HTTPS certificate is self-signed, so EVERY phone shows the
+  'connection not private' warning the first time - tap Advanced
+  -> Proceed. That one tap is what unlocks the motion sensor.
+- Running BOTH IntelliJ IDEA and Android Studio at the same time:
+  the first IDE opened owns the standard relay (8790/8791). The
+  second one serves its dashboard from 8792/8793 instead - every
+  URL it shows you is already correct, just use those.
+- If a forced break is open and nobody scans the QR, it is given
+  up after 15 minutes and the engine resumes watching.
 
 WHAT GOT BUILT (sanity)
 -----------------------
-  crunchguard-plugin/lib/crunchguard-plugin-2.2.0.jar
+  fitdeveloper-plugin/lib/fitdeveloper-plugin-2.4.1.jar
     META-INF/plugin.xml
-    com/crunchguard/plugin/*.class   (relay, engine, settings,
+    com/fitdeveloper/plugin/*.class   (relay, engine, settings,
                                       listener, startup, tool window,
-                                      notifier)
+                                      notifier, coding lock)
     web/  index.html walk.html qrcode.min.js icon.svg manifest.json
 
 REBUILD ANY TIME

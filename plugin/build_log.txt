@@ -1,4 +1,4 @@
-=== CrunchGuard plugin build started 23/09/2026  1:46:45.69 === 
+=== FitDeveloper plugin build started 23/09/2026 11:39:00.54 === 
 JAVA_HOME=C:\Program Files\Android\Android Studio\jbr 
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.12/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
@@ -13,7 +13,7 @@ Daemon will be stopped at the end of the build
 - The Java configuration specifies sourceCompatibility='17' but IntelliJ Platform 'AI-243.25659.59.2432.13423653' requires sourceCompatibility='21'.
 
 > Task :compileJava
-Note: C:\Users\loq\Documents\hackathons\JetBrains\CrunchGuard\plugin\src\main\java\com\crunchguard\plugin\CrunchGuardStartup.java uses or overrides a deprecated API.
+Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
 
 > Task :processResources
@@ -30,7 +30,7 @@ Note: Recompile with -Xlint:deprecation for details.
 
 [Incubating] Problems report is available at: file:///C:/Users/loq/Documents/hackathons/JetBrains/CrunchGuard/plugin/build/reports/problems/problems-report.html
 
-BUILD SUCCESSFUL in 59s
+BUILD SUCCESSFUL in 11s
 13 actionable tasks: 13 executed
 EXITCODE=0 
-=== build finished 23/09/2026  1:47:46.50 === 
+=== build finished 23/09/2026 11:39:12.36 === 

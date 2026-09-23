@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CrunchGuard — Walker</title>
+<title>FitDeveloper — Walker</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg">
 <meta name="theme-color" content="#0b0f14">
@@ -23,6 +23,10 @@ body{
 header{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;padding:6px 0 16px;letter-spacing:.5px}
 header .shield{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:linear-gradient(135deg,#0e7490,#059669);font-size:12px}
 header em{color:var(--cyan);font-style:normal}
+#main{
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:400px;margin:0 auto;
+}
 .ring-wrap{position:relative;width:min(72vw,270px);aspect-ratio:1;margin:4px 0 14px}
 .ring-wrap svg{transform:rotate(-90deg);width:100%;height:100%}
 .ring-bg{fill:none;stroke:#161d27;stroke-width:13}
@@ -80,7 +84,7 @@ header em{color:var(--cyan);font-style:normal}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .flashbar{position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--cyan),var(--emerald));opacity:0;transition:.3s}
 .flashbar.on{opacity:1}
-footer{margin-top:auto;padding-top:20px;font-size:10px;color:#3b4654}
+footer{margin-top:auto;padding-top:20px;font-size:10px;color:#3b4654;text-align:center;width:100%}
 </style>
 </head>
 <body>
@@ -132,7 +136,7 @@ footer{margin-top:auto;padding-top:20px;font-size:10px;color:#3b4654}
   <button class="btn primary" id="againBtn" style="max-width:260px">↻ Walk Again</button>
 </div>
 
-<footer>CrunchGuard v1.2 — walk to unlock</footer>
+<footer>FitDeveloper plugin v2.4.1 — walk to unlock</footer>
 
 <script>
 "use strict";

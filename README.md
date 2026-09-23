@@ -1,8 +1,8 @@
-# ⚔ CrunchGuard — walk to unlock your IDE
+# ⚔ FitDeveloper — walk to unlock your IDE
 
 **42AD × JetBrains hackathon — "Help the Developer"**
 
-CrunchGuard forces real walking breaks during crunch time: your IDE tracks
+FitDeveloper forces real walking breaks during crunch time: your IDE tracks
 work/crunch time, a break triggers a QR code, your phone counts actual steps
 with its motion sensors, progress syncs live, and completing the walk unlocks
 the IDE with **"Crunch Break Verified! +100 Mana"**.
@@ -35,7 +35,7 @@ friend-ready 2-minute setup: [`without-plugin/FRIEND_QUICKSTART.txt`](without-pl
 ```bash
 cd plugin
 gradle runIde           # sandbox IDE with the plugin loaded
-gradle buildPlugin      # -> build/distributions/CrunchGuard-2.2.0.zip
+gradle buildPlugin      # -> build/distributions/fitdeveloper-plugin-2.4.1.zip
 ```
 
 Then `Settings → Plugins → ⚙ → Install Plugin from Disk…`. Full guide:
@@ -64,7 +64,7 @@ Then `Settings → Plugins → ⚙ → Install Plugin from Disk…`. Full guide:
 ## Repository layout
 
 ```
-CrunchGuard/
+FitDeveloper/
 ├── without-plugin/     standalone web app (Node relay + same public/ front-end)
 │   ├── server.js  package.json  test_e2e.js  check.js
 │   ├── start_server.bat / .sh  restart_server.bat  firewall_fix.bat

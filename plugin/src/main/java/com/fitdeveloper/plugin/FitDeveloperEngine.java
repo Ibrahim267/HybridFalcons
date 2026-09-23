@@ -1,4 +1,4 @@
-package com.crunchguard.plugin;
+package com.fitdeveloper.plugin;
 
 import java.awt.Desktop;
 import java.net.URI;
@@ -11,7 +11,7 @@ import java.net.URI;
  *  - same math as the dashboard page: sustained typing (idle < 3 s) fills the
  *    crunch meter +0.9/s, idle decays it -1.6/s
  *  - at 100% the IDE itself forces the break: the session is created inside
- *    the relay, a notification balloon pops, the CrunchGuard tool window
+ *    the relay, a notification balloon pops, the FitDeveloper tool window
  *    activates AND the break screen with the QR opens in the default browser.
  *
  * The developer never has to open anything manually — that is the product.
@@ -23,11 +23,11 @@ import java.net.URI;
  *    triggered from an open dashboard; that session IS the break.
  *
  * All timing/target values and the on/off switch come live from
- * {@link CrunchGuardSettings} (Settings | Tools | CrunchGuard) — no restart
+ * {@link FitDeveloperSettings} (Settings | Tools | FitDeveloper) — no restart
  * needed. The tool window's "Force break now" button calls
  * {@link #forceBreakNow()} for an instant break screen.
  */
-public final class CrunchGuardEngine {
+public final class FitDeveloperEngine {
 
     private static final long OPEN_SESSION_GRACE_MS = 10 * 60 * 1000L; // pause window for dashboard breaks
     private static final long NO_WALKER_GIVE_UP_MS = 15 * 60 * 1000L;  // nobody scanned the QR
@@ -36,19 +36,19 @@ public final class CrunchGuardEngine {
     private static volatile double crunch = 0.0;
     private static volatile String forcedSessionId;
 
-    private CrunchGuardEngine() {
+    private FitDeveloperEngine() {
     }
 
-    /** Called once from {@link CrunchGuardServer#ensureStarted()}. */
+    /** Called once from {@link FitDeveloperServer#ensureStarted()}. */
     static void start() {
         if (started) {
             return;
         }
         started = true;
-        Thread t = new Thread(CrunchGuardEngine::loop, "crunchguard-engine");
+        Thread t = new Thread(FitDeveloperEngine::loop, "fitdeveloper-engine");
         t.setDaemon(true);
         t.start();
-        System.out.println("[CrunchGuard] forced-break engine running — watching real editor keystrokes");
+        System.out.println("[FitDeveloper] forced-break engine running — watching real editor keystrokes");
     }
 
     /** Current IDE-side crunch level 0..100 (exposed on /api/ide-activity). */
@@ -59,6 +59,27 @@ public final class CrunchGuardEngine {
     /** Session the engine forced, or null while idle (consumed by ide-bridge). */
     static String forcedSessionId() {
         return forcedSessionId;
+    }
+
+    /**
+     * True while a break is open — engine-forced, or a fresh dashboard one.
+     * While this is true the coding lock blocks new keystrokes: walk first,
+     * then code.
+     */
+    static boolean breakActive() {
+        if (forcedSessionId != null) {
+            return true;
+        }
+        return FitDeveloperServer.openSession(OPEN_SESSION_GRACE_MS) != null;
+    }
+
+    /** Id of the open break session (forced first, else fresh dashboard one), or null. */
+    static String activeBreakSessionId() {
+        if (forcedSessionId != null) {
+            return forcedSessionId;
+        }
+        FitDeveloperServer.Session s = FitDeveloperServer.openSession(OPEN_SESSION_GRACE_MS);
+        return s != null ? s.id : null;
     }
 
     private static void loop() {
@@ -77,8 +98,8 @@ public final class CrunchGuardEngine {
     }
 
     private static void tick() {
-        // 0) respect the off switch (Settings | Tools | CrunchGuard)
-        if (!CrunchGuardSettings.isEnabled()) {
+        // 0) respect the off switch (Settings | Tools | FitDeveloper)
+        if (!FitDeveloperSettings.isEnabled()) {
             forcedSessionId = null;
             crunch = 0;
             return;
@@ -86,14 +107,14 @@ public final class CrunchGuardEngine {
 
         // 1) a break we forced is still open -> pause until it resolves
         if (forcedSessionId != null) {
-            CrunchGuardServer.Session s = CrunchGuardServer.sessionById(forcedSessionId);
+            FitDeveloperServer.Session s = FitDeveloperServer.sessionById(forcedSessionId);
             long now = System.currentTimeMillis();
             boolean finished = s == null || s.steps >= s.target;               // verified (or evicted)
             boolean abandoned = s != null && !s.walkerConnected
                     && now - s.createdAt > NO_WALKER_GIVE_UP_MS;               // nobody scanned
             if (finished || abandoned) {
                 if (abandoned) {
-                    System.out.println("[CrunchGuard] forced break " + forcedSessionId
+                    System.out.println("[FitDeveloper] forced break " + forcedSessionId
                             + " abandoned — no walker connected after 15 min");
                 }
                 forcedSessionId = null;
@@ -103,14 +124,14 @@ public final class CrunchGuardEngine {
         }
 
         // 2) any fresh open session (dashboard-triggered) -> it IS the break
-        if (CrunchGuardServer.openSession(OPEN_SESSION_GRACE_MS) != null) {
+        if (FitDeveloperServer.openSession(OPEN_SESSION_GRACE_MS) != null) {
             return;
         }
 
         // 3) same math as the dashboard page tick, ramp time from settings
         long ago = EditorActivityListener.lastActivityAgoSec();
         if (ago >= 0 && ago < 3) {
-            crunch = Math.min(100, crunch + 100.0 / Math.max(5, CrunchGuardSettings.rampSeconds()));
+            crunch = Math.min(100, crunch + 100.0 / Math.max(5, FitDeveloperSettings.rampSeconds()));
         } else {
             crunch = Math.max(0, crunch - 1.6);
         }
@@ -123,13 +144,13 @@ public final class CrunchGuardEngine {
 
     private static void forceBreak() {
         crunch = 0;
-        int target = CrunchGuardSettings.targetSteps();
-        String id = CrunchGuardServer.createForcedSession(target);
+        int target = FitDeveloperSettings.targetSteps();
+        String id = FitDeveloperServer.createForcedSession(target);
         if (id == null) {
             return; // raced with a dashboard session — it will pause us next tick
         }
         forcedSessionId = id;
-        System.out.println("[CrunchGuard] FORCED break " + id
+        System.out.println("[FitDeveloper] FORCED break " + id
                 + " — target " + target + " steps (sustained typing detected)");
         BreakNotifier.breakStarted(id, target);
         openBreakScreen(id);
@@ -138,7 +159,7 @@ public final class CrunchGuardEngine {
     /** Opens the dashboard at /?s=<id> — the page adopts the session and shows the QR. */
     static void openBreakScreen(String id) {
         try {
-            Desktop.getDesktop().browse(new URI(CrunchGuardServer.baseUrl() + "/?s=" + id));
+            Desktop.getDesktop().browse(new URI(FitDeveloperServer.baseUrl() + "/?s=" + id));
         } catch (Throwable ignored) {
         }
     }
@@ -149,7 +170,7 @@ public final class CrunchGuardEngine {
      */
     static void forceBreakNow() {
         try {
-            CrunchGuardServer.Session open = CrunchGuardServer.openSession(OPEN_SESSION_GRACE_MS);
+            FitDeveloperServer.Session open = FitDeveloperServer.openSession(OPEN_SESSION_GRACE_MS);
             if (open != null) {
                 openBreakScreen(open.id);
                 return;

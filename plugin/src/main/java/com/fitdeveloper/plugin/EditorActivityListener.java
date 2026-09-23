@@ -1,4 +1,4 @@
-package com.crunchguard.plugin;
+package com.fitdeveloper.plugin;
 
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;

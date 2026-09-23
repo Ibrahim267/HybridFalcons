@@ -1,10 +1,10 @@
 $ErrorActionPreference = 'Continue'
 $log = "$env:LOCALAPPDATA\Google\AndroidStudio2024.3.2\log\idea.log"
 $l = Get-Content $log -ErrorAction SilentlyContinue
-Write-Output '--- [CrunchGuard] markers (last 6) ---'
-$l | Select-String -SimpleMatch '[CrunchGuard]' | Select-Object -Last 6 | ForEach-Object { $_.Line }
+Write-Output '--- [FitDeveloper] markers (last 6) ---'
+$l | Select-String -SimpleMatch '[FitDeveloper]' | Select-Object -Last 6 | ForEach-Object { $_.Line }
 Write-Output '--- plugin errors (last 4) ---'
-$l | Select-String -Pattern 'ClassNotFoundException|NoClassDefFoundError|InstantiationException' | Select-String -SimpleMatch 'crunchguard' | Select-Object -Last 4 | ForEach-Object { $_.Line }
+$l | Select-String -Pattern 'ClassNotFoundException|NoClassDefFoundError|InstantiationException' | Select-String -SimpleMatch 'fitdeveloper' | Select-Object -Last 4 | ForEach-Object { $_.Line }
 Write-Output '--- health ---'
 try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 4 http://localhost:8790/api/health).Content } catch { Write-Output ('health FAIL: ' + $_.Exception.Message) }
 Write-Output ''

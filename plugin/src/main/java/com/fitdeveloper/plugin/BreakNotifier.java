@@ -1,4 +1,4 @@
-package com.crunchguard.plugin;
+package com.fitdeveloper.plugin;
 
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
@@ -10,7 +10,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 
 /**
  * IDE-side reactions to the break lifecycle:
- *  - break started  -> balloon + auto-open the CrunchGuard tool window
+ *  - break started  -> balloon + auto-open the FitDeveloper tool window
  *  - break verified -> "Crunch Break Verified! +100 Mana" balloon
  *
  * Called from relay (background) threads; everything UI-related is wrapped
@@ -19,7 +19,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
  */
 public final class BreakNotifier {
 
-    public static final String TOOL_WINDOW_ID = "CrunchGuard";
+    public static final String TOOL_WINDOW_ID = "FitDeveloper";
 
     private BreakNotifier() {
     }
@@ -54,6 +54,19 @@ public final class BreakNotifier {
         });
     }
 
+    /** Shown by the coding lock when the developer tries to type during an open break. */
+    public static void walkReminder(final int remainingSteps) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            try {
+                notify("Walk to unlock the IDE",
+                        remainingSteps + " more steps and typing works again. "
+                                + "The break screen with the QR is in your browser.",
+                        firstProject());
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
     private static Project firstProject() {
         try {
             Project[] projects = ProjectManager.getInstance().getOpenProjects();
@@ -66,7 +79,7 @@ public final class BreakNotifier {
     private static void notify(String title, String content, Project project) {
         try {
             NotificationGroupManager.getInstance()
-                    .getNotificationGroup("CrunchGuard")
+                    .getNotificationGroup("FitDeveloper")
                     .createNotification(title, content, NotificationType.INFORMATION)
                     .notify(project);
         } catch (Throwable ignored) {

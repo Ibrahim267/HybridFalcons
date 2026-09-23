@@ -1,7 +1,7 @@
 @echo off
 rem ============================================================
-rem  CrunchGuard - firewall CLEANUP
-rem  Deletes the "CrunchGuard Plugin" rule = closes ports 8790-8795.
+rem  FitDeveloper - firewall CLEANUP
+rem  Deletes the "FitDeveloper Plugin" rule = closes ports 8790-8795.
 rem  Run this after testing if you want the door shut again.
 rem ============================================================
 net session >nul 2>&1
@@ -11,9 +11,9 @@ if %errorlevel% neq 0 (
   exit /b 0
 )
 
-netsh advfirewall firewall delete rule name="CrunchGuard Plugin"
+netsh advfirewall firewall delete rule name="FitDeveloper Plugin"
 echo.
-echo   [OK] CrunchGuard firewall rule removed - ports closed again.
+echo   [OK] FitDeveloper firewall rule removed - ports closed again.
 echo.
 pause
 exit /b 0

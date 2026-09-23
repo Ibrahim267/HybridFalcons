@@ -1,7 +1,9 @@
-package com.crunchguard.plugin;
+package com.fitdeveloper.plugin;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsServer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -12,6 +14,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -23,9 +26,11 @@ import java.util.concurrent.Executors;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 
 /**
- * CrunchGuard embedded relay — a faithful Java port of the standalone Node
+ * FitDeveloper embedded relay — a faithful Java port of the standalone Node
  * server (without-plugin/server.js). It serves the SAME web front-end
  * (resources/web) and the SAME JSON API, so no Node.js runtime is needed:
  * the IDE plugin is fully self-contained.
@@ -34,13 +39,19 @@ import java.util.regex.Pattern;
  *   GET /api/ide-activity  -> real editor keystroke activity, consumed by the
  *                             injected ide-bridge.js so the crunch meter is
  *                             driven by actual coding in the IDE.
+ *
+ * The relay also serves HTTPS (port 8791, self-signed cert bundled at
+ * /cert/keystore.p12): iOS only fires DeviceMotion events on secure
+ * contexts, so the QR links the phone to the https:// port — that is what
+ * makes REAL step counting work from the plugin variant.
  */
-public final class CrunchGuardServer {
+public final class FitDeveloperServer {
 
-    public static final String VERSION = "2.2.0-plugin";
+    public static final String VERSION = "2.4.1-plugin";
     static final long SESSION_TTL_MS = 2L * 60 * 60 * 1000; // 2h, same as server.js
     static final int MAX_SESSIONS = 500;
     static final int PORT_BASE = 8790;
+    static final int HTTPS_PORT_BASE = 8791;
 
     // ---------------- session model (mirrors server.js) ----------------
 
@@ -72,7 +83,9 @@ public final class CrunchGuardServer {
             };
 
     private static volatile HttpServer SERVER;
+    private static volatile HttpsServer HTTPS;
     private static volatile int PORT = -1;
+    private static volatile int HTTPS_PORT = -1;
     private static final long STARTED = System.currentTimeMillis();
     private static final Set<String> COMPLETION_NOTIFIED = ConcurrentHashMap.newKeySet();
 
@@ -84,7 +97,7 @@ public final class CrunchGuardServer {
     private static final Pattern P_PROGRESS = Pattern.compile("^/api/session/([a-z0-9]+)/progress$");
     private static final Pattern P_LOG = Pattern.compile("^/api/session/([a-z0-9]+)/log$");
 
-    private CrunchGuardServer() {
+    private FitDeveloperServer() {
     }
 
     // ---------------- lifecycle ----------------
@@ -93,38 +106,121 @@ public final class CrunchGuardServer {
         if (SERVER != null) {
             return;
         }
+        if (tryBind()) {
+            return;
+        }
+        System.err.println("[FitDeveloper] relay ports " + PORT_BASE + "-" + (PORT_BASE + 5)
+                + " busy — retrying every 3s until one frees up"
+                + " (close the other IDE/app that holds them)");
+        Thread retry = new Thread(() -> {
+            while (SERVER == null) {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                if (tryBind()) {
+                    return;
+                }
+            }
+        }, "fitdeveloper-relay-retry");
+        retry.setDaemon(true);
+        retry.start();
+    }
+
+    /**
+     * One bind pass over the port range. Synchronized so project startup and
+     * the background retry thread can never race into a double bind.
+     */
+    private static synchronized boolean tryBind() {
         IOException lastError = null;
         for (int port = PORT_BASE; port < PORT_BASE + 6; port++) {
             try {
                 HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
-                server.createContext("/", CrunchGuardServer::dispatch);
+                server.createContext("/", FitDeveloperServer::dispatch);
                 server.setExecutor(Executors.newCachedThreadPool(r -> {
-                    Thread t = new Thread(r, "crunchguard-relay");
+                    Thread t = new Thread(r, "fitdeveloper-relay");
                     t.setDaemon(true);
                     return t;
                 }));
                 server.start();
                 SERVER = server;
                 PORT = port;
-                System.out.println("[CrunchGuard] relay on http://localhost:" + port
+                System.out.println("[FitDeveloper] relay on http://localhost:" + port
                         + "  (phone / LAN: http://" + lanIP() + ":" + port + ")");
                 startSweeper();
-                CrunchGuardEngine.start();
-                return;
+                FitDeveloperEngine.start();
+                startHttps();
+                return true;
             } catch (IOException e) {
                 lastError = e;
             }
         }
-        System.err.println("[CrunchGuard] could not bind ports " + PORT_BASE + "-"
-                + (PORT_BASE + 5) + ": " + lastError);
+        if (lastError != null) {
+            System.err.println("[FitDeveloper] could not bind ports " + PORT_BASE + "-"
+                    + (PORT_BASE + 5) + ": " + lastError);
+        }
+        return false;
     }
 
     public static boolean isRunning() {
         return SERVER != null && PORT > 0;
     }
 
+    /** HTTPS port for the phone (iOS motion sensors need a secure context), or -1. */
+    public static int httpsPort() {
+        return HTTPS_PORT;
+    }
+
     public static String baseUrl() {
         return "http://localhost:" + Math.max(PORT, PORT_BASE);
+    }
+
+    /**
+     * Starts the HTTPS listener (8791..8796) with the bundled self-signed
+     * certificate. Same dispatcher as HTTP, so every route works over both.
+     * Failure is non-fatal: HTTP keeps working, the QR just falls back.
+     */
+    private static void startHttps() {
+        try {
+            char[] pass = "crunchguard".toCharArray();
+            KeyStore ks = KeyStore.getInstance("PKCS12");
+            try (InputStream in = FitDeveloperServer.class.getResourceAsStream("/cert/keystore.p12")) {
+                if (in == null) {
+                    System.out.println("[FitDeveloper] https skipped: bundled keystore missing");
+                    return;
+                }
+                ks.load(in, pass);
+            }
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(ks, pass);
+            SSLContext ctx = SSLContext.getInstance("TLS");
+            ctx.init(kmf.getKeyManagers(), null, null);
+            for (int port = HTTPS_PORT_BASE; port < HTTPS_PORT_BASE + 6; port++) {
+                try {
+                    HttpsServer hs = HttpsServer.create(new InetSocketAddress("0.0.0.0", port), 0);
+                    hs.setHttpsConfigurator(new HttpsConfigurator(ctx));
+                    hs.createContext("/", FitDeveloperServer::dispatch);
+                    hs.setExecutor(Executors.newCachedThreadPool(r -> {
+                        Thread t = new Thread(r, "fitdeveloper-relay-https");
+                        t.setDaemon(true);
+                        return t;
+                    }));
+                    hs.start();
+                    HTTPS = hs;
+                    HTTPS_PORT = port;
+                    System.out.println("[FitDeveloper] relay https on https://localhost:" + port
+                            + "  (phone: https://" + lanIP() + ":" + port
+                            + " — accept the certificate warning so iOS motion sensors work)");
+                    return;
+                } catch (IOException e) {
+                    // port busy -> try next
+                }
+            }
+            System.out.println("[FitDeveloper] https: no free port in " + HTTPS_PORT_BASE + "-" + (HTTPS_PORT_BASE + 5));
+        } catch (Throwable t) {
+            System.out.println("[FitDeveloper] https start failed (http still fine): " + t);
+        }
     }
 
     private static void startSweeper() {
@@ -140,7 +236,7 @@ public final class CrunchGuardServer {
                     SESSIONS.values().removeIf(s -> now - s.createdAt > SESSION_TTL_MS);
                 }
             }
-        }, "crunchguard-sweeper");
+        }, "fitdeveloper-sweeper");
         sweeper.setDaemon(true);
         sweeper.start();
     }
@@ -157,7 +253,7 @@ public final class CrunchGuardServer {
             }
             if ("/api/health".equals(path)) {
                 synchronized (SESSIONS_LOCK) {
-                    sendJSON(ex, 200, "{\"ok\":true,\"service\":\"crunchguard\",\"version\":"
+                    sendJSON(ex, 200, "{\"ok\":true,\"service\":\"fitdeveloper\",\"version\":"
                             + esc(VERSION) + ",\"uptimeSec\":" + uptimeSec()
                             + ",\"sessions\":" + SESSIONS.size() + ",\"ts\":" + System.currentTimeMillis() + "}");
                 }
@@ -165,16 +261,27 @@ public final class CrunchGuardServer {
             }
             if ("/api/config".equals(path)) {
                 sendJSON(ex, 200, "{\"lanIP\":" + esc(lanIP()) + ",\"port\":" + PORT
-                        + ",\"httpsPort\":null}");
+                        + ",\"httpsPort\":" + (HTTPS_PORT > 0 ? String.valueOf(HTTPS_PORT) : "null") + "}");
                 return;
             }
             if ("/api/ide-activity".equals(path)) {
                 long ago = EditorActivityListener.lastActivityAgoSec();
-                String fid = CrunchGuardEngine.forcedSessionId();
+                String fid = FitDeveloperEngine.forcedSessionId();
+                boolean typing = ago >= 0 && ago < 3;
+                double cr = FitDeveloperEngine.crunch();
+                boolean engineOn = FitDeveloperSettings.isEnabled();
+                int ramp = Math.max(5, FitDeveloperSettings.rampSeconds());
+                double rate = 100.0 / ramp;
+                boolean counting = typing && engineOn && cr < 100;
+                int toBreak = (int) Math.ceil((100.0 - cr) / rate);
                 sendJSON(ex, 200, "{\"keystrokes\":" + EditorActivityListener.keystrokes()
                         + ",\"lastActivityAgoSec\":" + ago
-                        + ",\"active\":" + (ago >= 0 && ago < 3)
-                        + ",\"crunch\":" + String.format(java.util.Locale.ROOT, "%.1f", CrunchGuardEngine.crunch())
+                        + ",\"active\":" + typing
+                        + ",\"crunch\":" + String.format(java.util.Locale.ROOT, "%.1f", cr)
+                        + ",\"secondsToBreak\":" + (counting ? String.valueOf(toBreak) : "null")
+                        + ",\"engineOn\":" + engineOn
+                        + ",\"rampSeconds\":" + ramp
+                        + ",\"targetSteps\":" + FitDeveloperSettings.targetSteps()
                         + ",\"forcedSession\":" + (fid != null ? esc(fid) : "null")
                         + "}");
                 return;
@@ -193,7 +300,7 @@ public final class CrunchGuardServer {
                     return;
                 }
                 Session s = createSession(target);
-                System.out.println("[CrunchGuard] session " + s.id + " created target=" + s.target);
+                System.out.println("[FitDeveloper] session " + s.id + " created target=" + s.target);
                 BreakNotifier.breakStarted(s.id, s.target);
                 sendJSON(ex, 200, publicState(s));
                 return;
@@ -305,7 +412,7 @@ public final class CrunchGuardServer {
                 }
             }
             Session s = createSession(target);
-            System.out.println("[CrunchGuard] forced session " + s.id + " created target=" + s.target);
+            System.out.println("[FitDeveloper] forced session " + s.id + " created target=" + s.target);
             return s.id;
         }
     }
@@ -450,7 +557,7 @@ public final class CrunchGuardServer {
     }
 
     private static byte[] readResource(String resPath) throws IOException {
-        try (InputStream in = CrunchGuardServer.class.getResourceAsStream(resPath)) {
+        try (InputStream in = FitDeveloperServer.class.getResourceAsStream(resPath)) {
             if (in == null) {
                 throw new IOException("missing bundled resource " + resPath);
             }
@@ -640,13 +747,26 @@ public final class CrunchGuardServer {
                   .then(function (j) {
                     if (last !== null && j.keystrokes > last) poke(j.keystrokes - last);
                     last = j.keystrokes;
+                    window.__cgEngine = j; /* feeds the dashboard break-countdown strip */
                     if (j.forcedSession && location.search.indexOf('s=' + j.forcedSession) === -1) {
                       location.href = '/?s=' + j.forcedSession;
                       return;
                     }
                     var b = document.getElementById('__cg_badge');
-                    if (b && typeof j.crunch === 'number') {
-                      b.textContent = 'IDE plugin mode — crunch ' + Math.round(j.crunch) + '%';
+                    if (b) {
+                      var t = 'IDE plugin mode - crunch ' + Math.round(j.crunch) + '%';
+                      if (j.forcedSession) t = 'IDE plugin mode - BREAK OPEN, walk!';
+                      else if (j.secondsToBreak != null) t = 'IDE plugin mode - break in ' + j.secondsToBreak + 's';
+                      else if (j.engineOn === false) t = 'IDE plugin mode - engine paused';
+                      b.textContent = t;
+                    }
+                    var sb = document.getElementById('sbState');
+                    var ov = document.getElementById('overlay');
+                    if (sb && ov && !ov.classList.contains('show')) {
+                      if (j.forcedSession) sb.textContent = 'BREAK OPEN - walk to unlock!';
+                      else if (j.secondsToBreak != null) sb.textContent = 'armed - forced break in ' + j.secondsToBreak + 's';
+                      else if (j.engineOn === false) sb.textContent = 'engine paused';
+                      else sb.textContent = 'watching your typing';
                     }
                   })
                   .catch(function () {});
@@ -655,7 +775,7 @@ public final class CrunchGuardServer {
               document.addEventListener('DOMContentLoaded', function () {
                 var b = document.createElement('div');
                 b.id = '__cg_badge';
-                b.textContent = 'IDE plugin mode — crunch 0%';
+                b.textContent = 'IDE plugin mode - crunch 0%';
                 b.style.cssText = 'position:fixed;bottom:6px;right:8px;z-index:9999;font:10px monospace;color:#22d3ee;background:#0b0f14;border:1px solid #1e2630;border-radius:99px;padding:3px 10px;opacity:.85;pointer-events:none';
                 document.body.appendChild(b);
               });

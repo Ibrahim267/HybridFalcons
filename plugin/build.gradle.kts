@@ -1,7 +1,7 @@
 // ============================================================
-//  CrunchGuard — IntelliJ Platform Plugin
+//  FitDeveloper — IntelliJ Platform Plugin
 //  "Help the Developer" — 42AD x JetBrains hackathon
-//  Build:  gradle buildPlugin   -> build/distributions/CrunchGuard-<v>.zip
+//  Build:  gradle buildPlugin   -> build/distributions/FitDeveloper-<v>.zip
 //  Run:    gradle runIde        -> sandbox IDE with the plugin loaded
 //
 //  Uses the IntelliJ Platform Gradle Plugin 2.x (required for 2024.2+).
@@ -17,8 +17,8 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.2.1"
 }
 
-group = "com.crunchguard"
-version = "2.2.0"
+group = "com.fitdeveloper"
+version = "2.4.1"
 
 repositories {
     mavenCentral()
@@ -48,7 +48,7 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild.set("242")
-            untilBuild.set("252.*")
+            untilBuild.set("299.*")
         }
     }
     // No forms/ searchable options to build — skip the headless IDE run.

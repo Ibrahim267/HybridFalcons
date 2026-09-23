@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Continue'
 $repo = 'C:\Users\loq\Documents\hackathons\JetBrains\CrunchGuard\plugin'
 $asCfg = "$env:APPDATA\Google\AndroidStudio2024.3.2\plugins"
-$z = "$repo\build\distributions\crunchguard-plugin-2.0.0.zip"
+$z = "$repo\build\distributions\fitdeveloper-plugin-2.0.0.zip"
 if (-not (Test-Path $z)) { Write-Output 'ZIP MISSING'; exit 1 }
 
 # 0. verify the new engine class is inside
@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $t | Out-Null
 tar -xf $z -C $t
 $j = (Get-ChildItem $t -Recurse -Filter *.jar)[0].FullName
 $entries = tar -tf $j
-$hasEngine = ($entries | Select-String 'CrunchGuardEngine.class') -ne $null
+$hasEngine = ($entries | Select-String 'FitDeveloperEngine.class') -ne $null
 Write-Output ("jar engine class present: " + $hasEngine)
 if (-not $hasEngine) { Write-Output 'ABORT - stale zip'; exit 1 }
 
@@ -26,17 +26,17 @@ if ($as) {
 }
 
 # 2. remove old seeded plugin
-Remove-Item "$asCfg\crunchguard-plugin" -Recurse -Force -ErrorAction SilentlyContinue
-if (Test-Path "$asCfg\crunchguard-plugin") { Write-Output 'OLD SEED STILL THERE' } else { Write-Output 'old seed removed' }
+Remove-Item "$asCfg\fitdeveloper-plugin" -Recurse -Force -ErrorAction SilentlyContinue
+if (Test-Path "$asCfg\fitdeveloper-plugin") { Write-Output 'OLD SEED STILL THERE' } else { Write-Output 'old seed removed' }
 
 # 3. seed the new build
-New-Item -ItemType Directory -Path "$asCfg\crunchguard-plugin" -Force | Out-Null
-tar -xf $z -C "$asCfg\crunchguard-plugin"
+New-Item -ItemType Directory -Path "$asCfg\fitdeveloper-plugin" -Force | Out-Null
+tar -xf $z -C "$asCfg\fitdeveloper-plugin"
 Write-Output 'seeded files:'
-Get-ChildItem "$asCfg\crunchguard-plugin" -Recurse -File | ForEach-Object { '  ' + $_.FullName.Substring($asCfg.Length) + '  ' + $_.Length }
+Get-ChildItem "$asCfg\fitdeveloper-plugin" -Recurse -File | ForEach-Object { '  ' + $_.FullName.Substring($asCfg.Length) + '  ' + $_.Length }
 
 # 4. refresh desktop zip
-Copy-Item $z "$env:USERPROFILE\Desktop\crunchguard-plugin-2.0.0.zip" -Force
+Copy-Item $z "$env:USERPROFILE\Desktop\fitdeveloper-plugin-2.0.0.zip" -Force
 Write-Output 'desktop zip refreshed'
 
 # 5. relaunch AS with the test project (returns immediately)

@@ -1,4 +1,4 @@
-package com.crunchguard.plugin;
+package com.fitdeveloper.plugin;
 
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.options.Configurable;
@@ -15,7 +15,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 
 /**
- * Settings | Tools | CrunchGuard — the developer stays in control:
+ * Settings | Tools | FitDeveloper — the developer stays in control:
  *  - enable/disable the forced-break engine WITHOUT uninstalling the plugin
  *  - freely choose the "seconds of sustained typing" before the IDE forces
  *    a break (any value, typed or spun)
@@ -27,11 +27,11 @@ import java.awt.Insets;
  * Persisted in the application-level PropertiesComponent; the engine reads
  * the values live every tick, so changes apply immediately (no restart).
  */
-public final class CrunchGuardSettings implements Configurable {
+public final class FitDeveloperSettings implements Configurable {
 
-    private static final String KEY_ENABLED = "crunchguard.enabled";
-    private static final String KEY_RAMP = "crunchguard.rampSeconds";
-    private static final String KEY_TARGET = "crunchguard.targetSteps";
+    private static final String KEY_ENABLED = "fitdeveloper.enabled";
+    private static final String KEY_RAMP = "fitdeveloper.rampSeconds";
+    private static final String KEY_TARGET = "fitdeveloper.targetSteps";
 
     // ---------------- live values used by the engine ----------------
 
@@ -71,12 +71,12 @@ public final class CrunchGuardSettings implements Configurable {
 
     @Override
     public String getDisplayName() {
-        return "CrunchGuard";
+        return "FitDeveloper";
     }
 
     @Override
     public JComponent createComponent() {
-        enabledBox = new JCheckBox("Enable CrunchGuard forced breaks (watch typing, force a walk)");
+        enabledBox = new JCheckBox("Enable FitDeveloper forced breaks (watch typing, force a walk)");
         enabledBox.setSelected(isEnabled());
 
         rampSpin = new JSpinner(new SpinnerNumberModel(rampSeconds(), 5, 3600, 1));
@@ -152,7 +152,7 @@ public final class CrunchGuardSettings implements Configurable {
         PropertiesComponent.getInstance().setValue(KEY_ENABLED, String.valueOf(enabledBox.isSelected()));
         PropertiesComponent.getInstance().setValue(KEY_RAMP, String.valueOf((Integer) rampSpin.getValue()));
         PropertiesComponent.getInstance().setValue(KEY_TARGET, String.valueOf((Integer) targetSpin.getValue()));
-        System.out.println("[CrunchGuard] settings applied: enabled=" + enabledBox.isSelected()
+        System.out.println("[FitDeveloper] settings applied: enabled=" + enabledBox.isSelected()
                 + ", ramp=" + rampSeconds() + "s, target=" + targetSteps() + " steps");
     }
 

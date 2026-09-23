@@ -1,36 +1,38 @@
 <idea-plugin>
-    <id>com.crunchguard.plugin</id>
-    <name>CrunchGuard</name>
-    <vendor>CrunchGuard (42AD x JetBrains hackathon)</vendor>
+    <id>com.fitdeveloper.plugin</id>
+    <name>FitDeveloper</name>
+    <vendor>FitDeveloper (42AD x JetBrains hackathon)</vendor>
     <description><![CDATA[
-    <p><b>CrunchGuard — walk to unlock your IDE.</b></p>
+    <p><b>FitDeveloper — walk to unlock your IDE.</b></p>
     <p>An always-on engine inside the IDE tracks REAL editor keystrokes and fills
     the crunch meter while you code. When sustained typing is detected the IDE
     itself <b>forces a walking break</b>: a QR code appears, your phone counts
     steps (DeviceMotion pedometer), progress syncs live through the plugin's
     built-in relay server — no Node.js, no external tools. Completing the walk
     unlocks the IDE with "Crunch Break Verified! +100 Mana".</p>
-    <p>Configure it under <b>Settings | Tools | CrunchGuard</b>: disable/enable
+    <p>Configure it under <b>Settings | Tools | FitDeveloper</b>: disable/enable
     the forced-break engine without uninstalling, freely set how many seconds
     of sustained typing trigger a break, and freely set the step target.
     Every value is editable and applies instantly — no restart needed.</p>
-    <p>This is the plugin variant of CrunchGuard. The standalone variant
-    (runs in a normal browser with a Node server) lives in the
-    <code>without-plugin</code> folder of the same repository.</p>
+    <p>This is the <b>IDE plugin</b> variant of FitDeveloper — it runs in both
+    <b>IntelliJ IDEA</b> and <b>Android Studio</b> (any 2024.2+ based IDE).
+    The standalone variant (runs in a normal browser with a Node server) lives
+    in the <code>without-plugin</code> folder of the same repository, kept
+    under its original prototype name "CrunchGuard".</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="CrunchGuard"
+        <toolWindow id="FitDeveloper"
                     anchor="right"
-                    factoryClass="com.crunchguard.plugin.CrunchGuardToolWindowFactory"
+                    factoryClass="com.fitdeveloper.plugin.FitDeveloperToolWindowFactory"
                     icon="/web/icon.svg"/>
-        <notificationGroup id="CrunchGuard" displayType="BALLOON"/>
-        <postStartupActivity implementation="com.crunchguard.plugin.CrunchGuardStartup"/>
+        <notificationGroup id="FitDeveloper" displayType="BALLOON"/>
+        <postStartupActivity implementation="com.fitdeveloper.plugin.FitDeveloperStartup"/>
         <applicationConfigurable parentId="tools"
-                                 id="com.crunchguard.plugin.settings"
-                                 displayName="CrunchGuard"
-                                 instance="com.crunchguard.plugin.CrunchGuardSettings"/>
+                                 id="com.fitdeveloper.plugin.settings"
+                                 displayName="FitDeveloper"
+                                 instance="com.fitdeveloper.plugin.FitDeveloperSettings"/>
     </extensions>
 </idea-plugin>
