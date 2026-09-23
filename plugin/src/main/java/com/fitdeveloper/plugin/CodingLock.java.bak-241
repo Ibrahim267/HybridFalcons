@@ -7,21 +7,16 @@ import com.intellij.openapi.editor.actionSystem.TypedActionHandler;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * The "walk to unlock" teeth — DEMO-ONLY, switched OFF by default.
+ * The "walk to unlock" teeth of the plugin: while a break is open, typed
+ * characters are swallowed — the developer literally cannot keep coding.
  *
- * Typing is NEVER blocked automatically. A keystroke is swallowed only when
- * BOTH are true:
- *  - the demo switch is ON ("Demo: block typing while a break is open" in
- *    Settings | Tools | FitDeveloper, or the checkbox in the tool window)
- *  - a break is actually open
+ * On each blocked keystroke:
+ *  - a balloon reminds them to walk (throttled to one per 15 s)
+ *  - the break screen is re-opened in the browser (throttled to one per
+ *    60 s, so ignoring the break is not an option, but tab spam is bounded)
  *
- * With the switch off (the default) every keystroke is delegated to the
- * original handler untouched — the plugin never interrupts coding, it only
- * observes. Even with the switch on, the block releases the moment the walk
- * is verified (or the walker goes silent — see the engine's stale-walker
- * give-up), so nobody can ever get stuck locked out.
- *
- * Installed once from {@link FitDeveloperStartup}.
+ * When no break is open, every keystroke is delegated to the original
+ * handler untouched. Installed once from {@link FitDeveloperStartup}.
  */
 public final class CodingLock {
 
@@ -44,9 +39,9 @@ public final class CodingLock {
                 @Override
                 public void execute(@NotNull Editor editor, char charTyped, @NotNull DataContext dataContext) {
                     try {
-                        if (FitDeveloperSettings.blockTypingEnabled() && FitDeveloperEngine.breakActive()) {
+                        if (FitDeveloperEngine.breakActive()) {
                             attention();
-                            return; // demo switch on + break open: swallow the keystroke
+                            return; // swallow the keystroke — walk first, then code
                         }
                     } catch (Throwable ignored) {
                         // never let the guard break normal typing
@@ -55,7 +50,7 @@ public final class CodingLock {
                 }
             });
             installed = true;
-            System.out.println("[FitDeveloper] coding lock armed — blocks typing ONLY while the demo switch is ON and a break is open");
+            System.out.println("[FitDeveloper] coding lock armed — typing is blocked while a break is open");
         } catch (Throwable t) {
             System.out.println("[FitDeveloper] coding lock install failed (typing stays enabled): " + t);
         }

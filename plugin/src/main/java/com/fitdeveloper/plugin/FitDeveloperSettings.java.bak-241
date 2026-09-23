@@ -16,12 +16,9 @@ import java.awt.Insets;
 
 /**
  * Settings | Tools | FitDeveloper — the developer stays in control:
- *  - enable/disable the crunch meter engine WITHOUT uninstalling the plugin
- *  - DEMO SWITCH "block typing while a break is open" — OFF by default, so
- *    the plugin never interrupts coding automatically. Flip it on only when
- *    you want the full walk-to-unlock demo (keystrokes are swallowed while a
- *    break is open, and released the moment the walk is verified).
- *  - freely choose the "seconds of sustained typing" ramp
+ *  - enable/disable the forced-break engine WITHOUT uninstalling the plugin
+ *  - freely choose the "seconds of sustained typing" before the IDE forces
+ *    a break (any value, typed or spun)
  *  - freely choose the steps target the phone must reach to verify it
  *
  * No fixed modes: every value is a plain editable number and applies the
@@ -33,7 +30,6 @@ import java.awt.Insets;
 public final class FitDeveloperSettings implements Configurable {
 
     private static final String KEY_ENABLED = "fitdeveloper.enabled";
-    private static final String KEY_BLOCK_TYPING = "fitdeveloper.blockTyping";
     private static final String KEY_RAMP = "fitdeveloper.rampSeconds";
     private static final String KEY_TARGET = "fitdeveloper.targetSteps";
 
@@ -44,18 +40,6 @@ public final class FitDeveloperSettings implements Configurable {
             return !"false".equals(PropertiesComponent.getInstance().getValue(KEY_ENABLED));
         } catch (Throwable t) {
             return true;
-        }
-    }
-
-    /**
-     * The demo switch: block typing while a break is open. OFF by default —
-     * the plugin must never block coding automatically.
-     */
-    static boolean blockTypingEnabled() {
-        try {
-            return "true".equals(PropertiesComponent.getInstance().getValue(KEY_BLOCK_TYPING));
-        } catch (Throwable t) {
-            return false;
         }
     }
 
@@ -82,7 +66,6 @@ public final class FitDeveloperSettings implements Configurable {
     // ---------------- Swing form ----------------
 
     private JCheckBox enabledBox;
-    private JCheckBox blockBox;
     private JSpinner rampSpin;
     private JSpinner targetSpin;
 
@@ -93,11 +76,8 @@ public final class FitDeveloperSettings implements Configurable {
 
     @Override
     public JComponent createComponent() {
-        enabledBox = new JCheckBox("Enable FitDeveloper engine (watch typing, fill the crunch meter)");
+        enabledBox = new JCheckBox("Enable FitDeveloper forced breaks (watch typing, force a walk)");
         enabledBox.setSelected(isEnabled());
-
-        blockBox = new JCheckBox("Demo: block typing while a break is open (walk to unlock)");
-        blockBox.setSelected(blockTypingEnabled());
 
         rampSpin = new JSpinner(new SpinnerNumberModel(rampSeconds(), 5, 3600, 1));
         targetSpin = new JSpinner(new SpinnerNumberModel(targetSteps(), 10, 5000, 1));
@@ -113,11 +93,10 @@ public final class FitDeveloperSettings implements Configurable {
         });
 
         JLabel hint = new JLabel("<html><body style='width:460px'>"
-                + "By default the plugin NEVER blocks your typing: it only watches and fills the "
-                + "crunch meter, and you start a break yourself with \u201cForce break now\u201d. "
-                + "Tick the DEMO box to restore the old behavior — while a break is open typed "
-                + "characters are swallowed until the walk is verified (or released automatically "
-                + "after 5 minutes of walker silence). Every value applies the moment you press Apply."
+                + "When the meter hits 100%, the IDE itself forces the break: a balloon pops, "
+                + "and the QR screen opens in your browser automatically. Uncheck the box to "
+                + "stop the engine without uninstalling the plugin. Type any value you like "
+                + "— it applies the moment you press Apply."
                 + "</body></html>");
 
         JPanel p = new JPanel(new GridBagLayout());
@@ -130,29 +109,25 @@ public final class FitDeveloperSettings implements Configurable {
         c.insets = new Insets(4, 4, 8, 4);
         p.add(enabledBox, c);
 
-        c.gridy = 1;
-        c.insets = new Insets(4, 4, 8, 4);
-        p.add(blockBox, c);
-
         c.gridwidth = 1;
         c.insets = new Insets(4, 4, 4, 4);
-        c.gridy = 2;
-        p.add(new JLabel("Sustained-typing seconds until the crunch meter reads 100%:"), c);
+        c.gridy = 1;
+        p.add(new JLabel("Sustained-typing seconds before the IDE forces a break:"), c);
         c.gridx = 1;
         p.add(rampSpin, c);
 
         c.gridx = 0;
-        c.gridy = 3;
+        c.gridy = 2;
         p.add(new JLabel("Steps required to verify the break (QR target):"), c);
         c.gridx = 1;
         p.add(targetSpin, c);
 
         c.gridx = 0;
-        c.gridy = 4;
+        c.gridy = 3;
         c.gridwidth = 2;
         p.add(defaults, c);
 
-        c.gridy = 5;
+        c.gridy = 4;
         c.insets = new Insets(12, 4, 4, 4);
         p.add(hint, c);
 
@@ -161,36 +136,32 @@ public final class FitDeveloperSettings implements Configurable {
 
     @Override
     public boolean isModified() {
-        if (enabledBox == null || blockBox == null) {
+        if (enabledBox == null) {
             return false;
         }
         return enabledBox.isSelected() != isEnabled()
-                || blockBox.isSelected() != blockTypingEnabled()
                 || (Integer) rampSpin.getValue() != rampSeconds()
                 || (Integer) targetSpin.getValue() != targetSteps();
     }
 
     @Override
     public void apply() {
-        if (enabledBox == null || blockBox == null) {
+        if (enabledBox == null) {
             return;
         }
         PropertiesComponent.getInstance().setValue(KEY_ENABLED, String.valueOf(enabledBox.isSelected()));
-        PropertiesComponent.getInstance().setValue(KEY_BLOCK_TYPING, String.valueOf(blockBox.isSelected()));
         PropertiesComponent.getInstance().setValue(KEY_RAMP, String.valueOf((Integer) rampSpin.getValue()));
         PropertiesComponent.getInstance().setValue(KEY_TARGET, String.valueOf((Integer) targetSpin.getValue()));
         System.out.println("[FitDeveloper] settings applied: enabled=" + enabledBox.isSelected()
-                + ", demoBlockTyping=" + blockBox.isSelected()
                 + ", ramp=" + rampSeconds() + "s, target=" + targetSteps() + " steps");
     }
 
     @Override
     public void reset() {
-        if (enabledBox == null || blockBox == null) {
+        if (enabledBox == null) {
             return;
         }
         enabledBox.setSelected(isEnabled());
-        blockBox.setSelected(blockTypingEnabled());
         rampSpin.setValue(rampSeconds());
         targetSpin.setValue(targetSteps());
     }
@@ -198,7 +169,6 @@ public final class FitDeveloperSettings implements Configurable {
     @Override
     public void disposeUIResources() {
         enabledBox = null;
-        blockBox = null;
         rampSpin = null;
         targetSpin = null;
     }

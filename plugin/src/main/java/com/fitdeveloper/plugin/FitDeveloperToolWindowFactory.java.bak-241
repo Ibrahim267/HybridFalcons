@@ -1,13 +1,14 @@
 package com.fitdeveloper.plugin;
 
 import com.intellij.ide.util.PropertiesComponent;
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBPanel;
+import com.intellij.ui.jcef.JBCefApp;
+import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,26 +33,13 @@ import java.net.URI;
 /**
  * The FitDeveloper tool window.
  *
- * The NATIVE control panel is always the first tab — the big countdown, the
- * crunch meter and both switches are plain Swing, so they render in every
- * IDE (IntelliJ IDEA, Android Studio) even where JCEF is missing or blank.
- * When JCEF is available a second tab embeds the web dashboard; it can never
- * blank out the controls anymore.
- *
- * JCEF is accessed ONLY via reflection (see {@link #embeddedDashboard}):
- * since 2024.2 the platform ships JCEF in a separate module that is not on
- * a plugin's classpath unless declared, and referencing JBCefApp directly
- * used to kill the whole tool window on fresh IntelliJ builds (the infamous
- * "plugin shows empty" bug). Now the worst case is simply no web tab.
- *
- * Native panel shows:
+ * With JCEF (IntelliJ IDEA runtime): embeds the dashboard directly.
+ * Without JCEF (Android Studio runtime): a live control panel —
  *   - a BIG ticking break countdown (90 -> 89 -> 88 ... while you type),
  *     color-escalating cyan -> amber -> red, mirrored from the engine
- *   - "BREAK DUE" at 100% — and, unless the demo switch is on, that is all
- *     that happens (nothing is forced, nothing is blocked)
  *   - live crunch meter + step progress while a break is open
- *   - engine on/off + DEMO "block typing" switches
- *   - "Force break now" — instant step-counting demo (blocking only in demo)
+ *   - enable/disable forced breaks WITHOUT uninstalling the plugin
+ *   - "Force break now" — instant QR screen
  *   - shortcut to Settings | Tools | FitDeveloper
  *   - "Open Dashboard" for the full browser UI
  */
@@ -70,54 +58,23 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
     private JProgressBar bar;
     private JLabel status;
     private JCheckBox enabled;
-    private JCheckBox demoBlock;
-    private Object browser; // JBCefBrowser via reflection, kept for disposal
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         FitDeveloperServer.ensureStarted();
         String url = FitDeveloperServer.baseUrl() + "/";
-        var factory = toolWindow.getContentManager().getFactory();
-
-        // Tab 1 — native control panel, ALWAYS present (never blank).
-        var nativeContent = factory.createContent(fallbackPanel(project, url), "Control Panel", false);
-        toolWindow.getContentManager().addContent(nativeContent);
-
-        // Tab 2 — embedded web dashboard, only when JCEF actually works.
-        JComponent web = embeddedDashboard(url);
-        if (web != null) {
-            try {
-                var webContent = factory.createContent(web, "Web Dashboard", false);
-                if (browser instanceof Disposable) {
-                    webContent.setDisposer((Disposable) browser);
-                }
-                toolWindow.getContentManager().addContent(webContent);
-            } catch (Throwable t) {
-                System.out.println("[FitDeveloper] embedded dashboard tab failed, native panel stays: " + t);
-            }
-        }
-        toolWindow.getContentManager().setSelectedContent(nativeContent);
-    }
-
-    /**
-     * Builds the JCEF dashboard WITHOUT any compile-time reference to JCEF
-     * classes. Returns null whenever JCEF is unavailable for any reason —
-     * the native control panel keeps working either way.
-     */
-    private JComponent embeddedDashboard(String url) {
-        try {
-            Class<?> app = Class.forName("com.intellij.ui.jcef.JBCefApp");
-            Object ok = app.getMethod("isSupported").invoke(null);
-            if (!(ok instanceof Boolean) || !((Boolean) ok)) {
-                return null;
-            }
-            Class<?> browserCls = Class.forName("com.intellij.ui.jcef.JBCefBrowser");
-            Object b = browserCls.getConstructor(String.class).newInstance(url);
-            this.browser = b;
-            return (JComponent) browserCls.getMethod("getComponent").invoke(b);
-        } catch (Throwable t) {
-            System.out.println("[FitDeveloper] embedded dashboard unavailable (no JCEF on this IDE) — native panel only");
-            return null;
+        JComponent component;
+        if (JBCefApp.isSupported()) {
+            JBCefBrowser browser = new JBCefBrowser(url);
+            component = browser.getComponent();
+            var content = toolWindow.getContentManager().getFactory()
+                    .createContent(component, "Dashboard", false);
+            content.setDisposer(browser);
+            toolWindow.getContentManager().addContent(content);
+        } else {
+            var content = toolWindow.getContentManager().getFactory()
+                    .createContent(fallbackPanel(project, url), "Dashboard", false);
+            toolWindow.getContentManager().addContent(content);
         }
     }
 
@@ -128,10 +85,9 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
 
         JLabel note = new JLabel("<html><body style='width:380px;text-align:center'>"
-                + "The relay runs inside your IDE — it watches your typing and fills the crunch "
-                + "meter. By default it NEVER interrupts you: at 100% it just shows \u201cBREAK DUE\u201d. "
-                + "Start a break yourself with \u201cForce break now\u201d, or flip the demo switch "
-                + "to make breaks block typing until you walk.<br>"
+                + "The relay runs inside your IDE — it watches your real typing and forces "
+                + "a walking break at 100% crunch. This runtime has no embedded browser "
+                + "(JCEF), so the QR screen opens in your default browser.<br>"
                 + "<span style='color:#7d8b9a'>dashboard: " + url + "</span></body></html>");
         note.setHorizontalAlignment(SwingConstants.CENTER);
         note.setForeground(DIM);
@@ -181,18 +137,11 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         card.add(status, cc);
 
         /* ---------- controls ---------- */
-        enabled = new JCheckBox("Engine enabled (watch typing, fill the crunch meter)");
+        enabled = new JCheckBox("Forced breaks enabled");
         enabled.setSelected(FitDeveloperSettings.isEnabled());
         enabled.addActionListener(e -> {
             PropertiesComponent.getInstance().setValue("fitdeveloper.enabled", String.valueOf(enabled.isSelected()));
             System.out.println("[FitDeveloper] engine " + (enabled.isSelected() ? "resumed" : "paused") + " (tool window toggle)");
-        });
-
-        demoBlock = new JCheckBox("Demo: block typing while a break is open");
-        demoBlock.setSelected(FitDeveloperSettings.blockTypingEnabled());
-        demoBlock.addActionListener(e -> {
-            PropertiesComponent.getInstance().setValue("fitdeveloper.blockTyping", String.valueOf(demoBlock.isSelected()));
-            System.out.println("[FitDeveloper] demo typing-block " + (demoBlock.isSelected() ? "ON" : "OFF") + " (tool window toggle)");
         });
 
         JButton force = new JButton("Force break now");
@@ -245,9 +194,6 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
         c.insets = JBUI.insets(12, 18, 2, 18);
         panel.add(enabled, c);
         c.gridy = 4;
-        c.insets = JBUI.insets(2, 18, 2, 18);
-        panel.add(demoBlock, c);
-        c.gridy = 5;
         c.insets = JBUI.insets(10, 18, 16, 18);
         panel.add(buttons, c);
 
@@ -261,21 +207,17 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
             if (on != enabled.isSelected()) {
                 enabled.setSelected(on); // settings page can flip it too
             }
-            boolean lockOn = FitDeveloperSettings.blockTypingEnabled();
-            if (lockOn != demoBlock.isSelected()) {
-                demoBlock.setSelected(lockOn);
-            }
             int target = FitDeveloperSettings.targetSteps();
 
             if (!on) {
-                cdTitle.setText("ENGINE PAUSED");
+                cdTitle.setText("FORCED BREAKS PAUSED");
                 cdNum.setText("—");
                 cdNum.setForeground(DIM);
-                cdUnit.setText("tick the engine checkbox below to resume");
+                cdUnit.setText("tick the checkbox below to resume");
                 bar.setMaximum(100);
                 bar.setValue(0);
                 bar.setString("crunch 0%");
-                status.setText("engine OFF · nothing is watched, nothing is interrupted");
+                status.setText("engine OFF · nothing will interrupt you");
                 return;
             }
 
@@ -294,9 +236,7 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
                 bar.setMaximum(tgt);
                 bar.setValue(steps);
                 bar.setString(steps + " / " + tgt + " steps");
-                status.setText(lockOn
-                        ? "your phone counts real steps — typing stays blocked until verified"
-                        : "demo blocking is OFF — typing stays unlocked, this is just the step counter");
+                status.setText("your phone counts real steps — coding stays locked until verified");
                 return;
             }
 
@@ -311,22 +251,11 @@ public final class FitDeveloperToolWindowFactory implements ToolWindowFactory {
             status.setText("target " + target + " steps · engine is watching your typing");
 
             if (typing) {
-                if (left <= 0) {
-                    // meter is full — what happens next depends on the demo switch
-                    cdTitle.setText("BREAK DUE");
-                    cdNum.setText("0");
-                    cdNum.setForeground(RED);
-                    cdUnit.setText(lockOn
-                            ? "forcing the walk now (demo blocking is ON)"
-                            : "demo blocking is OFF — keep coding, nothing will interrupt you");
-                } else {
-                    double frac = ramp > 0 ? (double) left / ramp : 1.0;
-                    cdTitle.setText("BREAK DUE IN");
-                    cdNum.setText(String.valueOf(left));
-                    cdNum.setForeground(frac > 0.55 ? CYAN : frac > 0.22 ? AMBER : RED);
-                    cdUnit.setText("seconds of typing until 100% crunch"
-                            + (lockOn ? " (then the break fires)" : " (demo blocking is OFF)"));
-                }
+                double frac = ramp > 0 ? (double) left / ramp : 1.0;
+                cdTitle.setText("FORCED BREAK IN");
+                cdNum.setText(String.valueOf(left));
+                cdNum.setForeground(frac > 0.55 ? CYAN : frac > 0.22 ? AMBER : RED);
+                cdUnit.setText("seconds of typing until the break fires");
             } else {
                 cdTitle.setText("COOLING DOWN");
                 cdNum.setText("—");

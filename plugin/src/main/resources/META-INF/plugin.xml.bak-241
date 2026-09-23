@@ -3,19 +3,17 @@
     <name>FitDeveloper</name>
     <vendor>FitDeveloper (42AD x JetBrains hackathon)</vendor>
     <description><![CDATA[
-    <p><b>FitDeveloper — crunch meter for your IDE, walk breaks on demand.</b></p>
+    <p><b>FitDeveloper — walk to unlock your IDE.</b></p>
     <p>An always-on engine inside the IDE tracks REAL editor keystrokes and fills
-    the crunch meter while you code. <b>By default it never interrupts you</b>:
-    at 100% crunch it simply shows "BREAK DUE" — no forced breaks, no blocked
-    typing. Start a break yourself with "Force break now" (QR code, your phone
-    counts steps via DeviceMotion pedometer, progress syncs live through the
-    plugin's built-in relay server).</p>
-    <p>Want the classic demo? Tick <b>"Demo: block typing while a break is
-    open"</b> in Settings | Tools | FitDeveloper (or in the tool window):
-    while a break is open the IDE swallows keystrokes until the walk is
-    verified — "Crunch Break Verified! +100 Mana" — and releases automatically
-    the moment the walk completes or the walker goes silent. The switch is
-    OFF by default, so the plugin can never lock you out unexpectedly.</p>
+    the crunch meter while you code. When sustained typing is detected the IDE
+    itself <b>forces a walking break</b>: a QR code appears, your phone counts
+    steps (DeviceMotion pedometer), progress syncs live through the plugin's
+    built-in relay server — no Node.js, no external tools. Completing the walk
+    unlocks the IDE with "Crunch Break Verified! +100 Mana".</p>
+    <p>Configure it under <b>Settings | Tools | FitDeveloper</b>: disable/enable
+    the forced-break engine without uninstalling, freely set how many seconds
+    of sustained typing trigger a break, and freely set the step target.
+    Every value is editable and applies instantly — no restart needed.</p>
     <p>This is the <b>IDE plugin</b> variant of FitDeveloper — it runs in both
     <b>IntelliJ IDEA</b> and <b>Android Studio</b> (any 2024.2+ based IDE).
     The standalone variant (runs in a normal browser with a Node server) lives
@@ -24,11 +22,6 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <!-- JCEF lives in its own module since 2024.2; without this the embedded
-         dashboard class is not reachable on fresh IntelliJ builds. Optional:
-         IDEs without the module (older Android Studio) skip it gracefully —
-         the native control panel is used there instead. -->
-    <depends optional="true" config-file="plugin-with-jcef.xml">com.intellij.platform.jcef</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="FitDeveloper"

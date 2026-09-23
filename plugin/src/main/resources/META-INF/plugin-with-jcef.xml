@@ -1,0 +1,6 @@
+<idea-plugin>
+    <!-- Partial descriptor loaded ONLY when the com.intellij.platform.jcef
+         module is present (fresh IntelliJ builds). It intentionally registers
+         no extensions — it exists so the optional <depends> in plugin.xml is
+         valid and puts the JCEF classes on the plugin's classpath. -->
+</idea-plugin>
